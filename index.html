@@ -39,7 +39,7 @@ main{max-width:1180px;margin:0 auto;padding:16px;display:grid;gap:14px}
 .list{display:grid;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
 .it{display:grid;grid-template-columns:52px minmax(0,1.3fr) minmax(0,2fr) minmax(150px,auto);gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);text-align:left;border-radius:0;border-left:0;border-right:0;border-bottom:0;background:var(--card);width:100%;content-visibility:auto;contain-intrinsic-size:auto 66px}
 .it:first-child{border-top:0}.it:hover{background:#f8faf9}
-.it.pend{background:var(--warns)}.it .no{color:var(--mute);font-size:16px}
+.it.pend{background:var(--warns)}.wt{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,2.4fr);gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}.wt:first-child{border-top:0}.wt .nm b{display:block;font-weight:700}.wt .nm span{font-size:15px;color:var(--mute)}.wt button{padding:4px 10px;font-size:17px}.it .no{color:var(--mute);font-size:16px}
 .it .nm b{display:block;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.it .nm span{font-size:15px;color:var(--mute)}
 .it .pf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-width:620px}.it .pf .chip{justify-content:center;overflow:hidden;text-overflow:ellipsis}.it .pf .chip.none{background:transparent;border:1px dashed var(--line);color:var(--mute)}.it.red{box-shadow:inset 4px 0 0 #E06666}.it .st{text-align:right;font-size:16px}
 .st .s{font-weight:700;border-radius:8px;padding:0 10px;display:inline-block}.st small{display:block;color:var(--mute);font-size:14px}
@@ -67,7 +67,7 @@ details summary{cursor:pointer;color:var(--mute);font-size:16px}
  body{font-size:18px}.top{flex-wrap:wrap}.top h1{font-size:20px}.steps{margin-left:0;width:100%}.steps button{font-size:16px;padding:3px 10px}
  main{padding:10px}.it{grid-template-columns:40px minmax(0,1fr) auto;contain-intrinsic-size:auto 118px}.it .pf{grid-column:2/4;order:3;grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:1fr 1fr}
  .scores{grid-template-columns:repeat(3,1fr)}.hide-m{display:none}
- .bars{grid-template-columns:1fr 1fr;gap:6px}.bar .track{height:7px;margin-top:4px}.bar small{display:none}
+ .wt{grid-template-columns:1fr;gap:6px} .bars{grid-template-columns:1fr 1fr;gap:6px}.bar .track{height:7px;margin-top:4px}.bar small{display:none}
  .fil.sticky{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.fil.sticky>*,.fil.sticky .fb>*{flex:none}.fil.sticky input{min-width:170px}.fil.sticky .muted{display:none}.bar{padding:6px 10px}.bar .t{flex-direction:column;gap:0;font-size:16px}
 }
 </style></head><body>
@@ -79,7 +79,7 @@ details summary{cursor:pointer;color:var(--mute);font-size:16px}
 <script>
 /* ===== TE: แกนคำนวณระบบจัดสาย ม.4 — โค้ดชุดเดียวกันทั้งเซิร์ฟเวอร์ (Apps Script) และหน้าเว็บ =====
    แถวรายชื่อหลัก: 0 ลำดับ, 1 เลขที่สมัคร, 2-4 ชื่อ, 5 ประเภท F, 6 ประเภท G, 7-10 อันดับ 1-4, 11-15 S1-S5, 16 รวม, 17 T,
-                   18 สายที่จัด, 19 การเลือก, 20 คนที่, 21 ครูจัดให้ (0/1 = เซลล์ B แดง)
+                   18 สายที่จัด, 19 การเลือก, 20 คนที่, 21 ครูจัดให้ (0/1 = เซลล์ B แดง: ระบบไม่จัดอัตโนมัติ ครูเลือกสายเอง)
    แถวคัดเลือก:   0-17 เหมือนกัน, 18 สถานะ, 19 ครูจัดให้ (0/1 = เซลล์ B แดง) */
 var TE = (function () {
   'use strict';
@@ -177,6 +177,9 @@ var TE = (function () {
     out.forEach(function (r, i) { r[0] = i + 1; });
     return out;
   }
+  function todo(rows) { return rows.filter(function (r) { return !str(r[18]) && !r[21]; }).length; } // ยังไม่จัด (ไม่นับครูจัดให้)
+  function waiting(rows) { return rows.filter(function (r) { return !str(r[18]) && r[21]; }).length; } // ครูจัดให้ที่ยังไม่ได้เลือกสาย
+  function waitMsg(rows) { var w = waiting(rows); return w ? ' · ครูจัดให้ ' + w + ' คนรอครูเลือกสาย' : ''; }
   function place(r, s, k, c) { c[s]++; r[18] = s; r[19] = 'อันดับ ' + (k + 1); r[20] = 'คนที่ ' + c[s]; }
   function hold(r) { r[18] = PEND; r[19] = ''; r[20] = ''; }
   function runSci(rows, q, cfg) {
@@ -187,7 +190,7 @@ var TE = (function () {
     for (var k = 0; k < order.length; k++) {
       var idx = order[k], r = rows[idx];
       if (full(cfg.sci, c, q)) { stopSeq = +r[0]; break; }
-      if (str(r[18])) continue;
+      if (str(r[18]) || r[21]) continue; // จัดแล้ว หรือ ครูจัดให้ (ครูเลือกสายเอง) → ข้าม
       var placed = false, stop = false;
       for (var pi = 0; pi < 4; pi++) {
         var p = str(r[7 + pi]);
@@ -206,7 +209,7 @@ var TE = (function () {
     for (var i = 0; i < rows.length; i++) {
       if (full(cfg.art, c, q)) break;
       var r = rows[i];
-      if (str(r[18])) continue;
+      if (str(r[18]) || r[21]) continue; // จัดแล้ว หรือ ครูจัดให้ → ข้าม
       var placed = false;
       for (var pi = 0; pi < 4; pi++) {
         var p = str(r[7 + pi]);
@@ -349,6 +352,7 @@ var TE = (function () {
       case 'assignSci': {
         needMain(st);
         if (full(cfg.sci, counts(st.main, cfg), st.q)) { out.msg = 'สายวิทย์ทั้งหมดเต็มแล้ว — กดจัดสายศิลป์ต่อได้เลย'; out.noop = true; break; }
+        if (!todo(st.main)) { out.msg = 'ไม่มีนักเรียนที่ต้องจัดอัตโนมัติแล้ว' + waitMsg(st.main); out.noop = true; break; }
         out.push = { l: 'จัดสายวิทย์', d: snapOf(st.main, cfg) };
         before = sMap(st.main);
         rows = sortMain(cloneRows(st.main), 'sci', cfg);
@@ -356,7 +360,7 @@ var TE = (function () {
         st.main = rows; st.dirty = true; out.main = out.order = true;
         out.changed = newlyPlaced(rows, before);
         pend = rows.filter(isPend).map(name);
-        out.msg = 'จัดสายวิทย์แล้ว ' + out.changed.length + ' คน' + (pend.length ? ' · หยุดที่ ' + pend.join(', ') + ' (รอพิจารณา)' : '');
+        out.msg = 'จัดสายวิทย์แล้ว ' + out.changed.length + ' คน' + (pend.length ? ' · หยุดที่ ' + pend.join(', ') + ' (รอพิจารณา)' : '') + waitMsg(rows);
         out.log = ['autoAssignSci', 'จัดสายวิทย์อัตโนมัติ (เว็บ) | หยุดที่ลำดับ: ' + (res.stopSeq > 0 ? res.stopSeq : 'ครบ')];
         break;
       }
@@ -364,6 +368,7 @@ var TE = (function () {
         needMain(st);
         if (st.main.some(isPend)) fail('ยังมีนักเรียน "รอพิจารณา" — เลือกสายให้ก่อน แล้วค่อยจัดสายศิลป์ต่อ');
         if (full(cfg.art, counts(st.main, cfg), st.q)) { out.msg = 'สายศิลป์ทุกสายเต็มแล้ว'; out.noop = true; break; }
+        if (!todo(st.main)) { out.msg = 'ไม่มีนักเรียนที่ต้องจัดอัตโนมัติแล้ว' + waitMsg(st.main); out.noop = true; break; }
         out.push = { l: 'จัดสายศิลป์', d: snapOf(st.main, cfg) };
         before = sMap(st.main);
         rows = sortMain(cloneRows(st.main), 'art', cfg);
@@ -371,8 +376,8 @@ var TE = (function () {
         st.main = rows; st.dirty = true; out.main = out.order = true;
         out.changed = newlyPlaced(rows, before);
         pend = rows.filter(isPend).map(name);
-        var left = rows.filter(function (x) { return !str(x[18]); }).length;
-        out.msg = 'จัดสายศิลป์แล้ว ' + res.assigned + ' คน' + (pend.length ? ' · หยุดที่ ' + pend.join(', ') + ' (รอพิจารณา)' : left ? ' · เหลือ ' + left + ' คน' : ' · ครบทุกคน');
+        var left = todo(rows);
+        out.msg = 'จัดสายศิลป์แล้ว ' + res.assigned + ' คน' + (pend.length ? ' · หยุดที่ ' + pend.join(', ') + ' (รอพิจารณา)' : left ? ' · เหลือ ' + left + ' คน' : ' · จัดอัตโนมัติครบแล้ว') + waitMsg(rows);
         out.log = ['autoAssignArt', 'จัดสายศิลป์อัตโนมัติ (เว็บ) | จัดได้: ' + res.assigned + ' คน'];
         break;
       }
@@ -405,7 +410,7 @@ var TE = (function () {
         if ((st.main[i][21] ? 1 : 0) === on) { out.msg = 'ไม่มีการเปลี่ยนแปลง'; out.noop = true; break; }
         rows = st.main.slice(); r = rows[i].slice(); r[21] = on; rows[i] = r;
         st.main = rows; out.main = true; out.rows = [i]; out.changed = [i];
-        out.msg = on ? 'ทำเครื่องหมาย "ครูจัดให้" แล้ว — จัดสายอัตโนมัติจะเรียงคนนี้ไว้ท้ายสุด' : 'ยกเลิกเครื่องหมาย "ครูจัดให้" แล้ว';
+        out.msg = on ? 'ทำเครื่องหมาย "ครูจัดให้" แล้ว — ระบบจะไม่จัดสายคนนี้อัตโนมัติ ครูเลือกสายเอง' : 'ยกเลิกเครื่องหมาย "ครูจัดให้" แล้ว — ระบบจัดสายคนนี้อัตโนมัติได้';
         out.log = ['ครูจัดให้ · จัดสาย (เว็บ)', (on ? 'ทำเครื่องหมาย' : 'ยกเลิกเครื่องหมาย') + ' ' + str(r[3]) + ' ' + str(r[4])];
         break;
       }
@@ -466,7 +471,7 @@ var TE = (function () {
   }
 
   return { run: run, counts: counts, hashMain: hashMain, hashSel: hashSel, pack: pack, unpack: unpack, enc3: enc3, dec3: dec3,
-    snapOf: snapOf, str: str, grp: grp, kind: kind, known: known, selCount: selCount, PEND: PEND, TEACH: TEACH, UNDO_MAX: UNDO_MAX };
+    snapOf: snapOf, str: str, grp: grp, kind: kind, known: known, selCount: selCount, todo: todo, waiting: waiting, PEND: PEND, TEACH: TEACH, UNDO_MAX: UNDO_MAX };
 })();
 
 </script>
@@ -676,7 +681,7 @@ function selDlg(id) {
     '<div>อันดับที่เลือก: ' + [7, 8, 9, 10].map(function (i, k) { var s = str(r[i]); return s && s !== '-' ? (k + 1) + '.' + chip(s) : ''; }).join(' ') + '</div>' +
     '<div><b>สถานะ:</b> ' + stBadge(S(r)) + ' <span class="muted">T-Score ' + esc(r[17]) + '</span></div>' +
     '<label class="row" style="gap:8px;align-items:flex-start"><input type="checkbox" id="dsp"' + (r[19] ? ' checked' : '') + ' style="margin-top:6px"><span><b>ครูจัดให้</b> (เซลล์ B แดง) — ล็อคเป็นตัวจริง เรียงต่อจากกลุ่ม A และ B<br><small class="muted">' +
-    (has ? 'ติ๊กแล้วระบบคัดเลือกใหม่ทันทีด้วยโควต้าเดิม (' + D.qSel + ') · ' : '') + 'ส่งไปรายชื่อหลักพร้อมเครื่องหมายนี้ (จัดสายอัตโนมัติจะเรียงไว้ท้ายสุด)</small></span></label></div>';
+    (has ? 'ติ๊กแล้วระบบคัดเลือกใหม่ทันทีด้วยโควต้าเดิม (' + D.qSel + ') · ' : '') + 'ส่งไปรายชื่อหลักพร้อมเครื่องหมายนี้ — ระบบจะไม่จัดสายคนนี้อัตโนมัติ ครูเลือกสายเอง</small></span></label></div>';
   d.dataset.id = r[1]; d.dataset.mode = 'sel';
   d.showModal();
 }
@@ -690,25 +695,27 @@ function vAsg() {
     '<div class="muted">แตะชื่อเพื่อจัด/เปลี่ยนสาย หรือทำเครื่องหมาย "ครูจัดให้"</div><div class="list" id="l2"></div></section>');
   if (fresh) $('q2').value = F2.q;
   var cnt = counts(), done = M.filter(function (r) { return CFG.streams.indexOf(S(r)) >= 0; }).length, pend = M.filter(function (r) { return S(r) === PEND; });
-  var left = M.filter(function (r) { return !S(r); }).length, picks = M.filter(function (r) { return r[21]; }).length;
+  var left = TE.todo(M), picks = M.filter(function (r) { return r[21]; }).length, wait = M.filter(function (r) { return r[21] && !S(r); });
   var sciFull = CFG.sci.every(function (s) { return cnt[s] >= D.q[s]; }), anySci = M.some(function (r) { return CFG.sci.indexOf(S(r)) >= 0; });
   var hint, hc = '';
   if (pend.length) { hint = 'มีนักเรียน<b>รอพิจารณา ' + pend.length + ' คน</b> (อันดับที่เลือกเต็มหมด) — เลือกสายให้ในกล่องด้านล่าง แล้วกด "จัดสายศิลป์ต่อ"'; hc = 'warn'; }
+  else if (!done && wait.length) { hint = 'มีนักเรียน<b>ครูจัดให้ ' + wait.length + ' คน</b> — ระบบจะไม่จัดสายให้อัตโนมัติ เลือกสายให้ในกล่องด้านล่าง (จัดก่อนกด ① จะได้สายตามที่ครูเลือกแน่นอน) แล้วกด <b>① จัดสายวิทย์อัตโนมัติ</b>'; hc = 'warn'; }
   else if (!done) hint = 'เริ่มจากกด <b>① จัดสายวิทย์อัตโนมัติ</b> (' + esc(CFG.sci.join(' + ')) + ' ตามคะแนน T)';
   else if (left && !sciFull && !anySci) hint = 'กด <b>① จัดสายวิทย์อัตโนมัติ</b>';
   else if (left) hint = 'เหลืออีก ' + left + ' คน — กด <b>② จัดสายศิลป์อัตโนมัติ</b>';
+  else if (wait.length) { hint = 'จัดอัตโนมัติครบแล้ว — เหลือนักเรียน<b>ครูจัดให้ ' + wait.length + ' คน</b> รอครูเลือกสายในกล่องด้านล่าง'; hc = 'warn'; }
   else hint = 'จัดครบ ' + done + ' คนแล้ว ✓ ไปดูที่ขั้นที่ 3 ผลรายสาย';
   $('asgt').innerHTML = '<section class="card"><h2>ขั้นที่ 2 · จัดสายการเรียน</h2><div class="bars">' + CFG.streams.map(function (s) {
       var c = col(s), n = cnt[s], p = Math.min(100, n / c.q * 100);
       return '<div class="bar" style="background:' + c.l + '"><div class="t" style="color:' + c.d + '"><span>' + esc(s) + '</span><span>' + n + ' / ' + c.q + '</span></div><div class="track"><div class="fill" style="width:' + p + '%;background:' + c.d + '"></div></div><small>' + (n >= c.q ? 'เต็ม' : 'ว่าง ' + (c.q - n) + ' ที่') + '</small></div>';
     }).join('') + '</div>' +
-    '<div class="muted">จัดแล้ว <b>' + done + '</b> / ' + M.length + ' · ยังไม่จัด ' + left + ' · รอพิจารณา ' + pend.length + (picks ? ' · ครูจัดให้ ' + picks : '') + '</div>' +
+    '<div class="muted">จัดแล้ว <b>' + done + '</b> / ' + M.length + ' · ยังไม่จัด ' + left + ' · รอพิจารณา ' + pend.length + (picks ? ' · ครูจัดให้ ' + picks + (wait.length ? ' (รอครูเลือกสาย ' + wait.length + ')' : '') : '') + '</div>' +
     '<div class="hint ' + hc + '">' + hint + '</div>' +
     '<div class="tools"><button class="pri" data-do="sci">① จัดสายวิทย์อัตโนมัติ</button><button class="pri" data-do="art"' + (pend.length ? ' disabled' : '') + '>② จัดสายศิลป์อัตโนมัติ</button>' +
     '<button data-do="undo"' + (D.un ? '' : ' disabled') + '>↩ ย้อนกลับ' + (D.un ? ': ' + esc(D.ul) : '') + '</button>' +
     '<span style="margin-left:auto" class="hide-m"></span><button class="danger" data-do="clear" data-w="sci">ล้างสายวิทย์</button><button class="danger" data-do="clear" data-w="art">ล้างสายศิลป์</button><button class="danger" data-do="clear" data-w="all">ล้างทั้งหมด</button></div></section>' +
-    pend.map(function (r) { return pendCard(r, cnt); }).join('');
-  $('f2b').innerHTML = [['all', 'ทั้งหมด ' + M.length], ['left', 'ยังไม่จัด ' + left], ['pend', 'รอพิจารณา ' + pend.length], ['pick', 'ครูจัดให้ ' + picks]].concat(CFG.streams.map(function (s) { return [s, s + ' ' + cnt[s]]; }))
+    pend.map(function (r) { return pendCard(r, cnt); }).join('') + (wait.length ? waitCard(wait, cnt) : '');
+  $('f2b').innerHTML = [['all', 'ทั้งหมด ' + M.length], ['left', 'ยังไม่จัด ' + (left + wait.length)], ['pend', 'รอพิจารณา ' + pend.length], ['pick', 'ครูจัดให้ ' + picks]].concat(CFG.streams.map(function (s) { return [s, s + ' ' + cnt[s]]; }))
     .map(function (x) { return '<button data-f2="' + esc(x[0]) + '" aria-pressed="' + (F2.f === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('');
   listAsg();
 }
@@ -730,6 +737,16 @@ function pendCard(r, cnt) {
     '<div class="row">' + opts.map(function (s) { var c = col(s); return '<button data-put="' + esc(s) + '" data-id="' + esc(r[1]) + '" style="border-color:' + c.d + ';color:' + c.d + '">จัดเข้า ' + esc(s) + (prefs.indexOf(s) >= 0 ? ' · อันดับ ' + (prefs.indexOf(s) + 1) : '') + ' <small class="muted">(ว่าง ' + (c.q - cnt[s]) + ')</small></button>'; }).join('') +
     '<button data-open="' + esc(r[1]) + '">รายละเอียด…</button></div></section>';
 }
+function waitCard(rows, cnt) {
+  return '<section class="card" style="border-color:#efb4b4;background:#fff7f7"><div class="row"><span class="badge b-pick">ครูจัดให้</span><b>รอครูเลือกสาย ' + rows.length + ' คน</b><span class="muted">ระบบไม่จัดให้อัตโนมัติ · กดสายที่ต้องการ</span></div>' +
+    '<div class="list">' + rows.map(function (r) {
+      var prefs = prefsOf(r), ok = prefs.filter(function (s) { var c = col(s); return c && cnt[s] < D.q[s]; });
+      return '<div class="wt"><span class="nm"><b>' + nm(r) + '</b><span>' + esc(r[1]) + ' · ' + ty(r) + ' · ' + sc(r) + '</span></span><span class="row" style="gap:6px">' +
+        ok.map(function (s) { var c = col(s); return '<button data-put="' + esc(s) + '" data-id="' + esc(r[1]) + '" style="border-color:' + c.d + ';color:' + c.d + ';background:' + c.l + '">' + esc(s) + ' · อันดับ ' + (prefs.indexOf(s) + 1) + ' <small class="muted">(ว่าง ' + (c.q - cnt[s]) + ')</small></button>'; }).join('') +
+        (ok.length < prefs.length ? '<span class="muted">' + (ok.length ? 'อันดับอื่นเต็ม' : 'อันดับที่เลือกเต็มหมด') + '</span>' : '') +
+        '<button data-open="' + esc(r[1]) + '">สายอื่น…</button></span></div>';
+    }).join('') + '</div></section>';
+}
 function edit(id) {
   var r = D.main.filter(function (x) { return String(x[1]) === String(id); })[0]; if (!r) return;
   var cnt = counts(), prefs = [7, 8, 9, 10].map(function (i) { return str(r[i]); }), s0 = S(r), d = $('dlg');
@@ -740,7 +757,7 @@ function edit(id) {
     '<div><b>สายที่จัด:</b> ' + (s0 === PEND ? '<span class="badge b-pend">รอพิจารณา</span>' : s0 ? chip(s0, true) + ' ' + esc(r[19]) + ' · ' + esc(r[20]) : 'ยังไม่จัด') + '</div>' +
     '<div class="pick">' + CFG.streams.map(function (s) { var c = col(s), full = cnt[s] >= c.q && s0 !== s, pi = prefs.indexOf(s);
       return '<button data-s="' + esc(s) + '"' + (full ? ' disabled' : '') + ' class="' + (s0 === s ? 'cur' : '') + '" style="border-color:' + c.d + ';background:' + c.l + ';color:' + c.d + '"><b>' + esc(s) + '</b><small>' + cnt[s] + '/' + c.q + (full ? ' · เต็ม' : '') + (pi >= 0 ? ' · อันดับ ' + (pi + 1) : ' · ครูจัดให้') + '</small></button>'; }).join('') + '</div>' +
-    '<div class="tools"><button data-clr="1" class="danger"' + (s0 ? '' : ' disabled') + '>ล้างสายของคนนี้</button><label class="row" style="gap:6px"><input type="checkbox" id="dpk"' + (r[21] ? ' checked' : '') + '> ครูจัดให้ (จัดสายอัตโนมัติเรียงคนนี้ไว้ท้ายสุด)</label></div></div>';
+    '<div class="tools"><button data-clr="1" class="danger"' + (s0 ? '' : ' disabled') + '>ล้างสายของคนนี้</button><label class="row" style="gap:6px"><input type="checkbox" id="dpk"' + (r[21] ? ' checked' : '') + '> ครูจัดให้ (ระบบไม่จัดสายคนนี้อัตโนมัติ ครูเลือกสายเอง)</label></div></div>';
   d.dataset.id = r[1]; d.dataset.mode = 'main';
   d.showModal();
 }
