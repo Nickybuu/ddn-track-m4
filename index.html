@@ -486,7 +486,7 @@ var box = function (w) { return { get: function (k) { try { return JSON.parse(w(
 var SS = box(function () { return sessionStorage; }), LS = box(function () { return localStorage; });
 var GAS = !!(window.google && google.script && google.script.run);
 var API = LS.get('api') || API0, TOKEN = SS.get('tok') || '';
-var CFG = null, D = null, BASE = null, Q = [], PUMP = false, OFF = false, PAUSED = false, LOG = null, LAST = 0, OKT = 0, READY = false;
+var CFG = null, D = null, BASE = null, Q = [], PUMP = false, OFF = false, BUSY = false, PAUSED = false, LOG = null, LAST = 0, OKT = 0, READY = false;
 var V = SS.get('v') || 'asg', F1 = { st: 'all', g: 'all', q: '' }, F2 = { f: 'all', q: '' }, F3 = null, MOUNT = '';
 var str = TE.str, PEND = TE.PEND;
 var GN = { A: 'A · ม.3 เดิม', B: 'B · ความสามารถพิเศษ', R: 'ครูจัดให้', C: 'C · ทั่วไป' };
@@ -554,13 +554,16 @@ function pump() {
   PUMP = true; status();
   var it = Q[0];
   send({ a: it.a, p: it.p, token: TOKEN, rid: it.rid, hM: it.hM, hS: it.hS, pM: it.pM, pS: it.pS }).then(function (r) {
-    PUMP = false; OFF = false; LAST = Date.now();
+    PUMP = false; OFF = false; BUSY = false; LAST = Date.now();
     if (r && r.ok) {
       Q.shift();
       if (it.read) { LOG = r.log || []; if (V === 'log') render(); }
       else if (r.m === 0 && r.state) { Q = []; adopt(r.state); toast('ปรับข้อมูลให้ตรงกับชีตแล้ว กรุณาตรวจผลอีกครั้ง', true); }
       else { BASE = it.after; if (it.server && r.msg) toast(r.msg); if (it.server && V === 'res') render(); }
       OKT = Date.now();
+    } else if (r && r.code === 'BUSY') { // เซิร์ฟเวอร์ยังบันทึกงานก่อนหน้าไม่เสร็จ → เก็บรายการไว้ ส่งใหม่เอง
+      BUSY = true; it.tries = (it.tries || 0) + 1; status(); setTimeout(pump, Math.min(20000, 2000 * it.tries));
+      return;
     } else if (r && r.code === 'AUTH') {
       PAUSED = true; persist(true); showLogin('หมดเวลาเข้าสู่ระบบ กรุณาใส่รหัสผ่านอีกครั้ง' + (Q.some(function (x) { return !x.read; }) ? ' — รายการที่ยังไม่บันทึกจะส่งต่อให้เอง' : ''));
       return;
@@ -581,6 +584,7 @@ function status() {
   var t = '', c = '';
   if (PAUSED) { t = '⚠ ต้องเข้าสู่ระบบใหม่'; c = 'bad'; }
   else if (OFF && n) { t = '⚠ ออฟไลน์ · รอส่ง ' + n; c = 'bad'; }
+  else if (BUSY && n) { t = '⏳ รอระบบบันทึกงานก่อนหน้า · รอส่ง ' + n; c = 'busy'; }
   else if (n) { t = '⏳ ' + (head && head.label ? head.label : 'กำลังบันทึก') + (n > 1 ? ' · อีก ' + (n - 1) : '') + '…'; c = 'busy'; }
   else if (OKT && Date.now() - OKT < 2500) { t = '✓ บันทึกลงชีตแล้ว'; c = 'ok'; setTimeout(status, 2600); }
   e.textContent = t; e.className = 'sync' + (t ? ' on ' + c : '');
@@ -821,7 +825,7 @@ function login(pw) {
     TOKEN = r.token; SS.set('tok', TOKEN);
     if (PAUSED && Q.length) { PAUSED = false; start(); pump(); } // ทำรายการที่ค้างต่อ
     else { PAUSED = false; Q = []; adopt(r.state); start(); persist(); }
-  }, function (e) { $('bpw').disabled = false; $('lerr').textContent = e.message; if ($('apd')) $('apd').open = true; });
+  }, function (e) { $('bpw').disabled = false; $('lerr').textContent = e.noapi ? e.message : 'เซิร์ฟเวอร์ไม่ตอบ — ตรวจอินเทอร์เน็ต แล้วกดเข้าสู่ระบบอีกครั้ง'; if (e.noapi && $('apd')) $('apd').open = true; });
 }
 function start() {
   READY = true;
