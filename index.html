@@ -732,7 +732,7 @@ function vAsg() {
     '<div class="tools"><button class="pri" data-do="sci">① จัดสายวิทย์อัตโนมัติ</button><button class="pri" data-do="art"' + (pend.length ? ' disabled' : '') + '>② จัดสายศิลป์อัตโนมัติ</button>' +
     '<button data-do="undo"' + (D.un ? '' : ' disabled') + '>↩ ย้อนกลับ' + (D.un ? ': ' + esc(D.ul) : '') + '</button>' +
     '<span style="margin-left:auto" class="hide-m"></span><button class="danger" data-do="clear" data-w="sci">ล้างสายวิทย์</button><button class="danger" data-do="clear" data-w="art">ล้างสายศิลป์</button><button class="danger" data-do="clear" data-w="all">ล้างทั้งหมด</button></div></section>' +
-    pend.map(function (r) { return pendCard(r, cnt); }).join('') + (wait.length ? waitCard(wait, cnt) : '');
+    pend.map(function (r) { return pendCard(r, cnt); }).join('');
   $('f2b').innerHTML = [['all', 'ทั้งหมด ' + M.length], ['left', 'ยังไม่จัด ' + (left + wait.length)], ['pend', 'รอพิจารณา ' + pend.length], ['pick', 'โรงเรียนจัดให้ ' + picks]].concat(CFG.streams.map(function (s) { return [s, s + ' ' + cnt[s]]; }))
     .map(function (x) { return '<button data-f2="' + esc(x[0]) + '" aria-pressed="' + (F2.f === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('');
   listAsg();
