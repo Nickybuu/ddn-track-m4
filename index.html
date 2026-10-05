@@ -132,6 +132,20 @@ select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;backgroun
   body.prv-open .pg{margin:0!important;box-shadow:none!important;break-after:page;page-break-after:always}
   body.prv-open .pg:last-child{break-after:auto;page-break-after:auto}
 }
+/* ===== รายงานตัว · มอบตัว · เปลี่ยนแผน · รหัสนักเรียน ===== */
+.ll .it{grid-template-columns:58px minmax(0,1fr) auto;contain-intrinsic-size:auto 60px}
+.ll .it .st{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center}
+.ll .it .st button{font-size:16px;padding:3px 10px}
+.ok-t{color:#1e6b3b}.bad-t{color:#b3261e}
+.dtabs small{font-weight:400;opacity:.85;font-size:14px}
+.pg.req{padding:14mm 18mm 10mm 22mm;line-height:1.35;outline:none}
+.pg.req .h{text-align:center;font-weight:700;font-size:18pt}
+.pg.req p{margin:0 0 2mm}
+.pg.req p.ind{text-indent:20mm}
+.pg.req u{text-decoration:none;border-bottom:.3mm dotted #000}
+.pg.req .sg2{display:flex;justify-content:space-between;gap:6mm;margin:8mm 0 6mm;text-align:center;line-height:1.6}
+.pg.req .box{border:.3mm solid #000;padding:2mm 4mm;margin:3mm 0;line-height:1.6}
+@media (max-width:760px){.ll .it{grid-template-columns:44px minmax(0,1fr)}.ll .it .st{grid-column:1/-1;justify-content:flex-start}}
 
 @media screen{body.prv-open{overflow:hidden}}
 </style></head><body>
@@ -996,34 +1010,272 @@ addEventListener('pagehide', function () { persist(true); });
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && READY && Date.now() - LAST > 60000) { if (Q.length) pump(); else check(); } });
 addEventListener('online', function () { if (Q.length) pump(); });
 
-/* ===================== 4) ประกาศผลและเอกสาร (สละสิทธิ์ · เรียกสำรอง · PDF) ===================== */
-var LV = { n: 4, s: 'ม.4', home: 'ดัดดรุณี', room: 'ห้องเรียน' }; // ระดับชั้นของเว็บนี้ · โรงเรียนเดิมของ ม.3 เดิม · คำนำหน้าชื่อกลุ่มบนใบลงชื่อ
+/* ===================== กติกาหลังประกาศผล (ใช้ร่วมกันทั้งไฟล์ WebDocs.gs และหน้าเว็บ — แก้ที่เดียว ผลตรงกันเสมอ) =====================
+   เหตุการณ์ 1 รายการ = [เวลาบันทึก, ผู้บันทึก, รหัส, เลขที่สมัคร, ห้อง/ลำดับ, หมายเหตุ, ชื่อ, ขั้นตอนขณะบันทึก, สาย, ห้อง, เวลาบันทึก(ms), เวลาที่เกิดจริง(ms)]
+     เวลาที่เกิดจริง = เวลาที่ครูกดบันทึกบนหน้าเว็บ (แม้ส่งถึงเซิร์ฟเวอร์ทีหลังเพราะเน็ตหลุด) หรือวันที่ยื่นคำร้องกระดาษ — ใช้ตัดสินวันปิดรับสำรอง ช่วงรับคำร้อง และลำดับยื่นก่อน
+   base = { main: {id: {s, tot, m3}}, res: [id ตามลำดับสำรอง], info: {id: {tot, m3}}, q: {สาย: โควต้า}, streams: [..], cfg: {...} } */
+var LC = (function () {
+  var LB = { W: 'สละสิทธิ์', UW: 'ยกเลิกการสละสิทธิ์', RA: 'สำรองรับสิทธิ์', RD: 'สำรองไม่รับสิทธิ์', RN: 'ติดต่อสำรองไม่ได้', RU: 'ยกเลิกผลการเรียกสำรอง',
+    P: 'รายงานตัวแล้ว', UP: 'ยกเลิกการรายงานตัว', E: 'มอบตัวแล้ว', UE: 'ยกเลิกการมอบตัว',
+    CQ: 'ยื่นคำร้องเปลี่ยนแผนการเรียน', CA: 'อนุมัติเปลี่ยนแผนการเรียน', CR: 'ไม่อนุมัติเปลี่ยนแผนการเรียน', CX: 'ถอนคำร้องเปลี่ยนแผน', CU: 'ยกเลิกผลพิจารณาคำร้อง',
+    ID: 'ยืนยันรหัสนักเรียน' };
+  var STG = { pre: 'ก่อนรายงานตัว', rep: 'รายงานตัวแล้ว (ยังไม่มอบตัว)', enr: 'มอบตัวแล้ว', acc: 'สำรองรับสิทธิ์ (ยังไม่มอบตัว)' };
+  var DAY = 86400000;
+  function s_(v) { return String(v == null ? '' : v).trim(); }
+  function ymd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s_(s)); return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : 0; } // 00:00 ของวันนั้น (เวลาท้องถิ่น)
+  function endOf(s) { var t = ymd(s); return t ? t + DAY : 0; } // หมดวันนั้น
+  function t_(e) { return +e[11] || +e[10] || 0; } // เวลาที่เกิดจริง (ไม่มี = เวลาบันทึก)
+
+  function fold(ev, base) {
+    var st = { W: {}, R: {}, P: {}, E: {}, N: {}, rq: {}, ch: {}, id: {}, cut: endOf(base.cfg && base.cfg.dCut) };
+    (ev || []).forEach(function (e) {
+      var c = e[2], id = e[3], r;
+      switch (c) {
+        case 'W': st.W[id] = e; r = st.rq[id]; if (r && r.st === 'wait') { r.st = 'x'; r.auto = 1; r.d = e; } break; // สละสิทธิ์ = คำร้องที่รออยู่ตกไป
+        case 'UW': delete st.W[id]; break;
+        case 'RA': case 'RD': case 'RN': st.R[id] = e; break;
+        case 'RU': delete st.R[id]; break;
+        case 'P': st.P[id] = e; break;
+        case 'UP': delete st.P[id]; break;
+        case 'E': st.E[id] = e; if (!st.P[id]) st.P[id] = e; break;
+        case 'UE': delete st.E[id]; break;
+        case 'CQ': r = st.rq[id]; st.rq[id] = { q: e, to: s_(e[8]), st: 'wait', d: null, done: r ? r.done + (r.st === 'ok' || r.st === 'no' ? 1 : 0) : 0 }; break;
+        case 'CA': r = st.rq[id]; if (r && r.st === 'wait') { r.st = 'ok'; r.d = e; r.pair = (/^สลับสายกับ (\S+)$/.exec(s_(e[5])) || [])[1] || ''; (st.ch[id] = st.ch[id] || []).push({ to: r.to, room: +e[9] || 0, e: e }); } break;
+        case 'CR': r = st.rq[id]; if (r && r.st === 'wait') { r.st = 'no'; r.d = e; } break;
+        case 'CX': r = st.rq[id]; if (r && r.st === 'wait') { r.st = 'x'; r.d = e; r.auto = 0; } break;
+        case 'CU': r = st.rq[id]; if (r && (r.st === 'ok' || r.st === 'no' || r.st === 'x')) { if (r.st === 'ok' && st.ch[id]) { st.ch[id].pop(); if (!st.ch[id].length) delete st.ch[id]; } r.st = 'wait'; r.d = null; r.pair = ''; r.auto = 0; } break;
+        case 'ID': st.id[id] = e; break;
+      }
+      if (e[5] && (c === 'W' || c === 'RA' || c === 'RD' || c === 'RN')) st.N[id] = e[5];
+    });
+    return st;
+  }
+  function isAcc(st, id) { var e = st.R[id]; return !!(e && e[2] === 'RA'); }
+  function inList(st, base, id) { return !!(base.main[id] || isAcc(st, id)); }
+  function active(st, base, id) { return inList(st, base, id) && !st.W[id]; }
+  function stream(st, base, id) {
+    var c = st.ch[id]; if (c && c.length) return c[c.length - 1].to;
+    if (base.main[id]) return base.main[id].s;
+    return isAcc(st, id) ? s_(st.R[id][8]) : '';
+  }
+  function ids(st, base) { // ทุกคนที่มีที่นั่ง (ตัวจริง + สำรองที่รับสิทธิ์) ไม่ตัดผู้สละสิทธิ์
+    var o = Object.keys(base.main);
+    Object.keys(st.R).forEach(function (id) { if (isAcc(st, id) && !base.main[id]) o.push(id); });
+    return o;
+  }
+  function counts(st, base) {
+    var n = {}; (base.streams || []).forEach(function (s) { n[s] = 0; });
+    ids(st, base).forEach(function (id) { if (st.W[id]) return; var s = stream(st, base, id); if (s) n[s] = (n[s] || 0) + 1; });
+    return n;
+  }
+  /** สำรองที่รับสิทธิ์แล้วยังอยู่ในห้องที่เรียกเข้า (สาย s) = ส่วนที่เกินโควต้าได้ตามกติกาเรียกสำรอง (เติมต่อท้ายห้อง) */
+  function resIn(st, base, s) {
+    var n = 0;
+    Object.keys(st.R).forEach(function (id) { if (isAcc(st, id) && !base.main[id] && !st.W[id] && !(st.ch[id] && st.ch[id].length) && s_(st.R[id][8]) === s) n++; });
+    return n;
+  }
+  function over(st, base, s) { var n = counts(st, base); return !!(s && base.q && base.q[s] && n[s] > base.q[s] + resIn(st, base, s)); }
+  function copy(st) { // สำเนาสถานะสำหรับลอง "ถ้ายกเลิกแล้วจะเป็นอย่างไร"
+    var t = {}, k; for (k in st) t[k] = st[k];
+    t.W = {}; for (k in st.W) t.W[k] = st.W[k];
+    t.ch = {}; for (k in st.ch) t.ch[k] = st.ch[k].slice();
+    return t;
+  }
+  function popCh(t, id) { if (t.ch[id]) { t.ch[id].pop(); if (!t.ch[id].length) delete t.ch[id]; } }
+  function stage(st, base, id) { return st.E[id] ? 'enr' : st.P[id] ? 'rep' : (isAcc(st, id) && !base.main[id]) ? 'acc' : 'pre'; }
+  function seats(st) { // ที่ว่างให้เรียกสำรอง = ผู้สละสิทธิ์ (ที่สละก่อนวันปิดรับสำรอง) − สำรองที่รับสิทธิ์
+    var w = 0, a = 0;
+    Object.keys(st.W).forEach(function (id) { if (!st.cut || !t_(st.W[id]) || t_(st.W[id]) < st.cut) w++; });
+    Object.keys(st.R).forEach(function (id) { if (isAcc(st, id)) a++; });
+    return { w: w, wAll: Object.keys(st.W).length, acc: a, free: w - a };
+  }
+  function info(base, id) { return base.main[id] || (base.info && base.info[id]) || {}; }
+  function prioKey(st, base, id) { // ลำดับพิจารณาคำร้องในสายเดียวกัน (น้อย = ก่อน)
+    var c = base.cfg || {}, r = st.rq[id], x = info(base, id), k = [];
+    if (+c.cM3) k.push(x.m3 ? 0 : 1);
+    if (c.cOrder === 'time') k.push(t_(r.q)); else k.push(-(+x.tot || 0), t_(r.q));
+    return k;
+  }
+  function cmpKey(a, b) { for (var i = 0; i < Math.max(a.length, b.length); i++) { var d = (a[i] || 0) - (b[i] || 0); if (d) return d; } return 0; }
+  function queue(st, base, s) { // คำร้องที่รอพิจารณาเข้าสาย s เรียงตามลำดับสิทธิ์
+    return Object.keys(st.rq).filter(function (id) { var r = st.rq[id]; return r.st === 'wait' && r.to === s && active(st, base, id); })
+      .sort(function (a, b) { return cmpKey(prioKey(st, base, a), prioKey(st, base, b)) || (a < b ? -1 : 1); });
+  }
+  /** คู่สลับสาย: คนลำดับแรกที่ขอจากสาย A ไป B จับคู่กับคนลำดับแรกที่ขอจาก B ไป A (คนลำดับหลังสลับแซงไม่ได้) */
+  function swapOf(st, base, id) {
+    var r = st.rq[id]; if (!r || r.st !== 'wait' || !active(st, base, id)) return '';
+    var my = stream(st, base, id);
+    var mine = queue(st, base, r.to).filter(function (o) { return stream(st, base, o) === my; });
+    if (mine[0] !== id) return '';
+    return queue(st, base, my).filter(function (o) { return stream(st, base, o) === r.to; })[0] || '';
+  }
+  function inWindow(c, now) {
+    var a = ymd(c.cFrom), b = endOf(c.cTo);
+    return (!a || now >= a) && (!b || now < b);
+  }
+  /** ตรวจก่อนบันทึก · now = เวลาที่เกิดจริงของรายการนี้ · คืนข้อความผิดพลาด หรือ '' ถ้าบันทึกได้ */
+  function check(st, base, p, now) {
+    var t = p.t, id = s_(p.id), c = base.cfg || {}, x, s, n, q, tt;
+    now = now || Date.now();
+    switch (t) {
+      case 'W':
+        if (!inList(st, base, id)) return 'เลขที่สมัคร ' + id + ' ไม่อยู่ในรายชื่อผู้ผ่านการคัดเลือก หรือสำรองที่รับสิทธิ์แล้ว';
+        if (st.W[id]) return id + ' ถูกบันทึกสละสิทธิ์ไว้แล้ว';
+        return '';
+      case 'UW':
+        if (!st.W[id]) return 'ไม่มีการสละสิทธิ์ของ ' + id;
+        x = seats(st);
+        if ((!st.cut || !t_(st.W[id]) || t_(st.W[id]) < st.cut) && x.acc > x.w - 1) return 'ยกเลิกไม่ได้ เพราะเรียกสำรองมาแทนที่นั่งนี้แล้ว — ยกเลิกผล "รับสิทธิ์" ของสำรองคนล่าสุดก่อน';
+        tt = copy(st); delete tt.W[id]; s = stream(tt, base, id);
+        if (over(tt, base, s)) { n = counts(st, base); return 'ยกเลิกไม่ได้ เพราะที่นั่งสาย ' + s + ' มีผู้ย้ายเข้ามาแทนแล้ว (' + n[s] + '/' + base.q[s] + ')'; }
+        return '';
+      case 'RA':
+        x = base.res.indexOf(id);
+        if (x < 0) return id + ' ไม่อยู่ในรายชื่อสำรอง';
+        if (st.R[id]) return 'บันทึกผลของสำรองลำดับที่ ' + (x + 1) + ' ไว้แล้ว';
+        for (var k = 0; k < x; k++) if (!st.R[base.res[k]]) return 'ต้องเรียกตามลำดับ — สำรองลำดับที่ ' + (k + 1) + ' ยังไม่ได้บันทึกผล';
+        if (st.cut && now >= st.cut) return 'เลยวันปิดรับสำรองแล้ว (' + c.dCut + ') — ไม่เรียกสำรองเพิ่ม';
+        x = seats(st);
+        if (x.free <= 0) return 'ยังไม่มีที่ว่าง (สละสิทธิ์ ' + x.w + ' คน · สำรองรับสิทธิ์แล้ว ' + x.acc + ' คน)';
+        return '';
+      case 'RD': case 'RN':
+        x = base.res.indexOf(id);
+        if (x < 0) return id + ' ไม่อยู่ในรายชื่อสำรอง';
+        if (st.R[id]) return 'บันทึกผลของสำรองลำดับที่ ' + (x + 1) + ' ไว้แล้ว — กดยกเลิกผลก่อนถ้าต้องการแก้';
+        return '';
+      case 'RU':
+        if (!st.R[id]) return 'ยังไม่มีผลการเรียกให้ยกเลิก';
+        if (isAcc(st, id) && st.W[id]) return 'สำรองคนนี้ถูกบันทึกสละสิทธิ์แล้ว — ยกเลิกการสละสิทธิ์ก่อน';
+        if (isAcc(st, id) && (st.P[id] || st.E[id])) return 'สำรองคนนี้รายงานตัว/มอบตัวแล้ว — ยกเลิกรายการนั้นก่อน';
+        if (isAcc(st, id) && (st.ch[id] || (st.rq[id] && st.rq[id].st === 'wait'))) return 'สำรองคนนี้มีคำร้องเปลี่ยนแผนการเรียน — ถอน/ยกเลิกคำร้องก่อน';
+        return '';
+      case 'P': case 'E':
+        if (!inList(st, base, id)) return id + ' ไม่อยู่ในรายชื่อผู้ผ่านการคัดเลือก หรือสำรองที่รับสิทธิ์';
+        if (st.W[id]) return id + ' สละสิทธิ์แล้ว';
+        if (t === 'P' && st.P[id]) return id + ' บันทึกรายงานตัวไว้แล้ว';
+        if (t === 'E' && st.E[id]) return id + ' บันทึกมอบตัวไว้แล้ว';
+        return '';
+      case 'UP':
+        if (!st.P[id]) return 'ยังไม่ได้บันทึกรายงานตัว';
+        if (st.E[id]) return 'มอบตัวแล้ว — ยกเลิกการมอบตัวก่อน';
+        return '';
+      case 'UE':
+        return st.E[id] ? '' : 'ยังไม่ได้บันทึกมอบตัว';
+      case 'CQ':
+        s = s_(p.s);
+        if (!active(st, base, id)) return id + ' ไม่อยู่ในรายชื่อนักเรียน (หรือสละสิทธิ์แล้ว)';
+        if ((base.streams || []).indexOf(s) < 0) return 'ไม่มีสาย "' + s + '"';
+        if (stream(st, base, id) === s) return 'นักเรียนอยู่สาย ' + s + ' อยู่แล้ว';
+        q = st.rq[id];
+        if (q && q.st === 'wait') return 'มีคำร้องที่รอพิจารณาอยู่แล้ว (ขอไปสาย ' + q.to + ')';
+        if (+c.cOnce !== 0 && q && (q.done || q.st === 'ok' || q.st === 'no')) return 'ยื่นคำร้องได้คนละ 1 ครั้ง — คำร้องเดิมพิจารณาแล้ว';
+        if (!inWindow(c, now)) return 'อยู่นอกช่วงรับคำร้อง (' + (c.cFrom || '…') + ' ถึง ' + (c.cTo || '…') + ') — คำร้องกระดาษที่ยื่นในช่วงเวลา ให้ใส่วันที่ยื่นจริง · แก้ช่วงวันได้ที่ตั้งค่า';
+        return '';
+      case 'CA':
+        q = st.rq[id];
+        if (!q || q.st !== 'wait') return 'ไม่มีคำร้องที่รอพิจารณา';
+        if (!active(st, base, id)) return id + ' สละสิทธิ์แล้ว';
+        if (p.pair) {
+          var o = s_(p.pair), qo = st.rq[o];
+          if (!qo || qo.st !== 'wait' || qo.to !== stream(st, base, id) || q.to !== stream(st, base, o) || !active(st, base, o)) return 'คู่นี้สลับสายกันไม่ได้';
+          if (swapOf(st, base, id) !== o) { // มีคนลำดับก่อนที่ขอเส้นทางเดียวกัน
+            var my = stream(st, base, id), first = queue(st, base, q.to).filter(function (z) { return stream(st, base, z) === my; })[0];
+            return 'ต้องพิจารณาตามลำดับ — ' + (first !== id ? first : swapOf(st, base, id)) + ' (ลำดับก่อน) ขอเปลี่ยนเส้นทางเดียวกันอยู่';
+          }
+          return '';
+        }
+        n = counts(st, base);
+        if (base.q && base.q[q.to] && n[q.to] >= base.q[q.to]) return 'สาย ' + q.to + ' ยังไม่มีที่ว่าง (' + n[q.to] + '/' + base.q[q.to] + ')';
+        x = queue(st, base, q.to);
+        if (x[0] !== id) return 'ต้องพิจารณาตามลำดับ — คำร้องของ ' + x[0] + ' (ลำดับก่อน) ยังรอพิจารณา';
+        return '';
+      case 'CR': case 'CX':
+        q = st.rq[id];
+        return q && q.st === 'wait' ? '' : 'ไม่มีคำร้องที่รอพิจารณา';
+      case 'CU':
+        q = st.rq[id];
+        if (!q || (q.st !== 'ok' && q.st !== 'no' && q.st !== 'x')) return 'ยังไม่มีผลพิจารณาให้ยกเลิก';
+        if (q.st === 'x') return active(st, base, id) ? '' : id + ' สละสิทธิ์อยู่ — ยกเลิกการสละสิทธิ์ก่อน';
+        if (p.pair) { // ยกเลิกการสลับสายทั้งคู่พร้อมกัน — ลองย้อนทั้งคู่แล้วตรวจว่าไม่มีสายเกินโควต้า
+          var o2 = s_(p.pair), q2 = st.rq[o2];
+          if (q.st !== 'ok' || !q2 || q2.st !== 'ok' || q.pair !== o2 || q2.pair !== id) return 'คู่นี้ไม่ได้สลับสายกัน (ยกเลิกทีละคน)';
+          tt = copy(st); popCh(tt, id); popCh(tt, o2);
+          var bad = [stream(tt, base, id), stream(tt, base, o2)].filter(function (z) { return over(tt, base, z); })[0];
+          if (bad) return 'ยกเลิกการสลับไม่ได้ เพราะสาย ' + bad + ' จะเกินโควต้า (มีการเปลี่ยนแปลงหลังสลับ)';
+          return '';
+        }
+        if (q.st === 'ok' && !st.W[id]) {
+          tt = copy(st); popCh(tt, id); s = stream(tt, base, id);
+          if (over(tt, base, s)) { n = counts(st, base); return 'ย้อนกลับไม่ได้ เพราะสาย ' + s + ' เต็มแล้ว (' + n[s] + '/' + base.q[s] + ')'; }
+        }
+        return '';
+      case 'ID':
+        if (!base.main[id] && base.res.indexOf(id) < 0) return id + ' ไม่อยู่ในรายชื่อ';
+        if (!/^(รหัสเดิม \d{4,7}|ออกรหัสใหม่)$/.test(s_(p.d))) return 'ค่ารหัสไม่ถูกต้อง';
+        return '';
+    }
+    return 'รายการไม่ถูกต้อง';
+  }
+  return { LB: LB, STG: STG, fold: fold, check: check, isAcc: isAcc, inList: inList, active: active, stream: stream, ids: ids, counts: counts, resIn: resIn,
+    stage: stage, seats: seats, queue: queue, swapOf: swapOf, inWindow: inWindow, ymd: ymd, endOf: endOf, t: t_ };
+})();
+
+/* ระดับชั้นของเว็บนี้: ม.4 (ส่วนที่ต่างจาก ม.1) */
+var LV = { n: 4, s: 'ม.4', key: 'm4', m4: true, home: 'ดัดดรุณี', room: 'ห้องเรียน', repT2: false, repDesc: 'เรียงตามเลขที่สมัคร', csvTy: ['ประเภท F', 'ประเภท G'],
+  groups: { 'เตรียมวิศวะ': 'เตรียมวิศวกรรมและเทคโนโลยีดิจิทัล', 'เตรียมแพทย์': 'เตรียมแพทย์และวิทยาศาสตร์สุขภาพ', 'วิทย์-คณิต': 'วิทยาศาสตร์-คณิตศาสตร์',
+    'พาณิชย์': 'พาณิชย์และการบัญชี', 'อังกฤษ-จีน': 'อังกฤษ-จีน', 'อังกฤษ-ญี่ปุ่น': 'อังกฤษ-ญี่ปุ่น', 'อังกฤษ-เกาหลี': 'อังกฤษ-เกาหลี', 'เพชรสังคม': 'เพชรสังคม' }, // ชื่อตามประกาศปี 69
+  modes: { 'วิทย์-คณิต': 'top' }, // ปี 69: ม.4/5 = วิทย์-คณิต 40 คนแรก ม.4/6 = ที่เหลือ · สายอื่นที่มี 2 ห้องสลับ ก-ข-ข-ก
+  manual: function (r) { return TE.manual(r, CFG); }, // กลุ่มโรงเรียนจัดให้ (ครูจัดให้ / ไม่ได้เลือกอันดับ)
+  res: function (sel) { var L = CFG.stl; return sel.filter(function (r) { return S(r) === L[2]; }); }, // ลำดับในแท็บคัดเลือก
+  ty: function (r) { var g = str(r[6]); return esc(str(r[5]) || '–') + (g && g !== CFG.tg ? ' · ' + esc(g) : ''); }, // ประเภท F (· G ถ้าเป็นความสามารถพิเศษ)
+  split: function (main) { var a = main.filter(function (r) { return str(r[5]) === CFG.m3; }).length; return { a: a, b: main.length - a, la: 'ม.3 เดิม', lb: 'ทั่วไป' }; },
+  annSplit: function (x) { return 'นักเรียน ม.3 โรงเรียนเดิม จำนวน ' + x.a + ' คน นักเรียนทั่วไป จำนวน ' + x.b + ' คน'; },
+  tyHead: '<th>ประเภท</th>', tyCells: function (r) { return '<td class="c fit">' + esc(str(r[5])) + '</td>'; },
+  ax1W: function (sc) { return sc ? [9, 18, 13, 20, 23, 15, 34, 13, 45] : [10, 19, 14, 24, 28, 17, 15, 63]; },
+  ax2W: function (sc) { return sc ? [12, 22, 15, 27, 33, 18, 63] : [14, 26, 17, 36, 47, 50]; },
+  repSort: function (list) { return byId(list); }
+};
+
+/* ===================== 4) ประกาศผลและเอกสาร (สละสิทธิ์ · เรียกสำรอง · PDF) — ใช้ร่วมกันทั้ง ม.1 และ ม.4 (ต่างกันที่ LV) ===================== */
 var CREST = 'data:image/png;base64,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'; // ตราครุฑหัวประกาศ
+var GROUP_DEF = LV.groups, MODE_DEF = LV.modes || {};
 var DOC_DEF = { yr: '', dExam: '', dAnn: '', dRep: '', dEnr: '', place: 'ชั้นล่าง อาคารเฉลิมพระเกียรติ 7 รอบ พระชนมพรรษา', tRep: '08.30 – 16.30 น.', tCall: '16.30 น.',
-  dir: 'นายชยกฤต เกตานนท์', dirPos: 'ผู้อำนวยการโรงเรียนดัดดรุณี', r0: 3, rsz: 40, rapp: 0, sig: 1, exTab: 'ข้อมูลผู้สมัคร' };
-var GROUP_DEF = { 'เตรียมวิศวะ': 'เตรียมวิศวกรรมและเทคโนโลยีดิจิทัล', 'เตรียมแพทย์': 'เตรียมแพทย์และวิทยาศาสตร์สุขภาพ', 'วิทย์-คณิต': 'วิทยาศาสตร์-คณิตศาสตร์',
-  'พาณิชย์': 'พาณิชย์และการบัญชี', 'อังกฤษ-จีน': 'อังกฤษ-จีน', 'อังกฤษ-ญี่ปุ่น': 'อังกฤษ-ญี่ปุ่น', 'อังกฤษ-เกาหลี': 'อังกฤษ-เกาหลี', 'เพชรสังคม': 'เพชรสังคม' }; // ชื่อตามประกาศปี 69
-var MODE_DEF = { 'วิทย์-คณิต': 'top' }; // ปี 69: ม.4/5 = วิทย์-คณิต 40 คนแรก ม.4/6 = ที่เหลือ · สายอื่นที่มี 2 ห้องสลับ ก-ข-ข-ก
+  dir: 'นายชยกฤต เกตานนท์', dirPos: 'ผู้อำนวยการโรงเรียนดัดดรุณี', r0: 3, rsz: 40, rapp: 0, sig: 1, exTab: 'ข้อมูลผู้สมัคร',
+  dCut: '', cFrom: '', cTo: '', cOrder: 'score', cOnce: 1, cM3: 0 };
 var RES_LB = { RA: 'รับสิทธิ์', RD: 'ไม่รับสิทธิ์', RN: 'ติดต่อไม่ได้' }, RES_BG = { RA: 'b-a', RD: 'b-d', RN: 'b-n' };
-var WHY = ['ไม่มารายงานตัว', 'ผู้ปกครองแจ้งสละสิทธิ์', 'ไม่มามอบตัว', 'อื่น ๆ (ระบุในหมายเหตุ)'];
+var WHY = ['ไม่มารายงานตัว', 'ผู้ปกครองแจ้งสละสิทธิ์', 'ไม่มามอบตัว', 'ขอลาออกหลังมอบตัว', 'ย้ายไปเรียนที่อื่น', 'อื่น ๆ (ระบุในหมายเหตุ)'];
+var WHY_BY = { pre: 'ไม่มารายงานตัว', rep: 'ไม่มามอบตัว', acc: 'ไม่มามอบตัว', enr: 'ขอลาออกหลังมอบตัว' }; // เหตุผลที่เลือกไว้ให้ตามขั้นตอนของนักเรียน
 var TH_M = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 var DT = SS.get('dt') || 'docs', DQS = '', DBY = LS.get('by') || '', DDRAFT = null, DM = null, DGEN = 0, DNEED = false, DNOTE = '';
 
 /* ---------- ข้อมูลประกาศจากเซิร์ฟเวอร์ + รายการที่รอบันทึก ---------- */
-function dclone(b) { return { cfg: b.cfg || {}, ev: (b.ev || []).slice(), ex: b.ex || {}, exInfo: b.exInfo || {}, at: b.at || '' }; }
-function dapply(s, x) {
+function dclone(b) { return { v: b.v || 0, cfg: b.cfg || {}, ev: (b.ev || []).slice(), ex: b.ex || {}, exInfo: b.exInfo || {}, at: b.at || '', dmc: b.dmc || null, ids: b.ids || null }; }
+function dapply(s, x) { // ใส่รายการที่ยังรอบันทึกลงข้อมูลบนหน้าเว็บก่อน (เซิร์ฟเวอร์ตรวจซ้ำและคืนข้อมูลจริงทีหลัง)
   if (x.a === 'docCfg') s.cfg = x.p.cfg;
-  else if (x.a === 'docEv') s.ev.push([now(), x.p.by || '', x.p.t, x.p.id, x.p.d || '', x.p.n || '', x.p.nm || '']);
+  else if (x.a === 'docEv') {
+    var p = x.p, ts = x.ts || Date.now(), at = +p.at || ts;
+    if (p.plan && !(s.cfg && s.cfg.plan)) { s.cfg = JSON.parse(JSON.stringify(s.cfg || {})); s.cfg.plan = p.plan; }
+    var push = function (id, d, n, nm, st, room) { s.ev.push([now(), p.by || '', p.t, id, d || '', n || '', nm || '', '', st || '', room ? String(room) : '', ts, at]); };
+    if (p.ids) p.ids.forEach(function (id) { push(id, '', p.n, ''); });
+    else if (p.t === 'CA' && p.pair) { push(p.id, p.d, 'สลับสายกับ ' + p.pair, p.nm, p.s, p.room); push(p.pair, p.d2, 'สลับสายกับ ' + p.id, p.nm2, p.s2, p.room2); } // หมายเหตุแบบเดียวกับเซิร์ฟเวอร์
+    else if (p.t === 'CU' && p.pair) { push(p.id, '', 'ยกเลิกการสลับสายกับ ' + p.pair, p.nm); push(p.pair, '', 'ยกเลิกการสลับสายกับ ' + p.id, p.nm2); }
+    else push(p.id, p.d, p.n, p.nm, p.s, p.room);
+  }
 }
-function dkeepEx(doc) { if (doc && !doc.ex) { var o = DBASE || DS || {}; doc.ex = o.ex || {}; doc.exInfo = o.exInfo || {}; } }
+function dkeepEx(doc) {
+  if (!doc) return;
+  var o = DBASE || DS || {};
+  if (!doc.ex) { doc.ex = o.ex || {}; doc.exInfo = o.exInfo || {}; }
+  if (!doc.ids) { doc.ids = o.ids || null; doc.dmc = o.dmc || null; }
+}
 function dreplay(base) { var s = dclone(base); DQ.forEach(function (x) { dapply(s, x); }); return s; }
-function dpersist() { SS.set('dq', DQ.map(function (x) { return { rid: x.rid, a: x.a, p: x.p, label: x.label }; })); }
+function dpersist() { SS.set('dq', DQ.map(function (x) { return { rid: x.rid, a: x.a, p: x.p, label: x.label, ts: x.ts }; })); }
 function dinit() { if (dinit.done) return; dinit.done = 1; DQ = (SS.get('dq') || []).filter(function (x) { return x && x.a && x.rid; }); if (DBASE) DS = dreplay(DBASE); }
 function dErr(r) {
   var m = (r && r.error) || 'ทำรายการไม่สำเร็จ';
   return /คำสั่งไม่ถูกต้อง/.test(m) ? 'เซิร์ฟเวอร์ยังไม่มีส่วน "ประกาศผล" — เพิ่มไฟล์ WebDocs ใน Apps Script แล้ว Deploy เวอร์ชันใหม่ (Manage deployments → ✏️ → New version)' : m;
 }
-function dsig(b) { return b ? JSON.stringify([b.cfg, b.ev, (b.exInfo || {}).n, (b.exInfo || {}).tab]) : ''; }
+function dsig(b) { return b ? JSON.stringify([b.cfg, b.ev, (b.exInfo || {}).n, (b.exInfo || {}).tab, b.dmc && b.dmc.n, b.dmc && b.dmc.odd, b.ids]) : ''; }
 function dload(force) {
   if (DLOADING || !READY || PAUSED) return;
   if (DQ.length || DPUMP) { DNEED = true; return; } // มีรายการรอบันทึก → โหลดหลังบันทึกเสร็จ (ผลบันทึกส่งข้อมูลล่าสุดกลับมาอยู่แล้ว)
@@ -1040,8 +1292,14 @@ function dload(force) {
 }
 function dact(a, p, label) {
   if (!DS) { toast('ยังโหลดข้อมูลประกาศไม่เสร็จ ลองอีกครั้ง', true); return false; }
-  if (a === 'docEv') { var er = dcheck(p); if (er) { toast(er, true); return false; } }
-  var x = { rid: rid(), a: a, p: p, label: label || 'บันทึก' };
+  var ts = Date.now();
+  if (a === 'docEv') {
+    if (p.at == null) p.at = ts; // เวลาที่กดจริง (ถ้าเน็ตหลุดแล้วส่งทีหลัง เซิร์ฟเวอร์ยังใช้เวลานี้)
+    var er = dcheck(p); if (er) { toast(er, true); return false; }
+    var M0 = DM || dModel();
+    if (!(DS.cfg && DS.cfg.plan) && !M0.pending.length && M0.P.rooms.length) p.plan = dPlan(M0); // รายการแรกหลังประกาศ → ล็อกแผนห้องเรียน
+  }
+  var x = { rid: rid(), a: a, p: p, label: label || 'บันทึก', ts: ts };
   dapply(DS, x); DQ.push(x); dpersist(); DGEN++;
   if (V === 'doc') render();
   dpump();
@@ -1094,6 +1352,9 @@ function dcfg(src) {
   for (k in (s.groups || {})) if (str(s.groups[k])) c.groups[k] = s.groups[k];
   if (!c.yr) c.yr = dYear();
   c.r0 = +c.r0 || 3; c.rsz = +c.rsz || 40; c.rapp = +c.rapp || 0; c.sig = s.sig === 0 || s.sig === '0' ? 0 : 1;
+  c.cOnce = s.cOnce === 0 || s.cOnce === '0' ? 0 : 1; c.cM3 = LV.m4 && +s.cM3 ? 1 : 0; c.cOrder = s.cOrder === 'time' ? 'time' : 'score';
+  c.cond = s.cond || {};
+  c.place = String(c.place).replace(/^ขั้นล่าง /, 'ชั้นล่าง '); // แก้คำผิดของรุ่นก่อนที่อาจบันทึกไว้แล้ว
   return c;
 }
 function dGroup(c, s) { return str(c.groups[s]) || GROUP_DEF[s] || s; }
@@ -1102,7 +1363,7 @@ function dRank() { // ลำดับคะแนนสำหรับประ�
   var n = function (v) { var x = parseFloat(v); return isNaN(x) ? 1e9 : x; }, v = function (x) { return parseFloat(x) || 0; }, K = CFG.artKeys || [16, 14, 11, 15, 13, 12];
   var all = D.main.map(function (r, i) { return { r: r, i: i }; }).sort(function (a, b) { return (n(a.r[0]) - n(b.r[0])) || (a.i - b.i); }).map(function (x) { return x.r; });
   var tot = function (r) { return v(r[16]); }, srt = function (list, f) { return list.map(function (r, i) { return { r: r, i: i }; }).sort(function (a, b) { return f(a.r, b.r) || (a.i - b.i); }).map(function (x) { return x.r; }); };
-  var X = all.filter(function (r) { return !TE.manual(r, CFG); }), P = all.filter(function (r) { return TE.manual(r, CFG); }), out = [];
+  var X = all.filter(function (r) { return !LV.manual(r); }), P = all.filter(function (r) { return LV.manual(r); }), out = [];
   var cmp = function (a, b) { for (var k = 0; k < K.length; k++) { var d = v(b[K[k]]) - v(a[K[k]]); if (d) return d; } return 0; };
   X = srt(X, function (a, b) { return tot(b) - tot(a); }); P = srt(P, cmp); // กันกรณีครูจัดสายให้บางคนก่อนกด ① (คนนั้นจะถูกย้ายไปต้นรายชื่อหลัก)
   while (X.length || P.length) { // ผสานจากท้าย: คนที่คะแนนต่ำกว่าไปท้าย (คะแนนเท่ากัน กลุ่มโรงเรียนจัดให้อยู่หลัง)
@@ -1111,11 +1372,12 @@ function dRank() { // ลำดับคะแนนสำหรับประ�
   return out.reverse();
 }
 function dRooms(c, rank) { // แบ่งห้องในแต่ละสาย: top = ห้องแรกคะแนนสูงสุด แล้วสลับ ก-ข-ข-ก · snake = สลับ ก-ข-ข-ก ทุกห้อง
-  var sz = Math.max(1, c.rsz), next = c.r0, rooms = [], roomOf = {};
+  var pl = c.plan && c.plan.n ? c.plan : null; // หลังเริ่มบันทึกรายการหลังประกาศ: ใช้แผนห้องที่ล็อกไว้ (เลขห้องไม่เลื่อนแม้แก้โควต้า/ค่าตั้ง)
+  var sz = Math.max(1, pl ? pl.rsz : c.rsz), next = pl ? pl.r0 : c.r0, rooms = [], roomOf = {};
   CFG.streams.forEach(function (s) {
-    var mem = rank.filter(function (r) { return S(r) === s; }), q = Math.max((D.q && D.q[s]) || 0, mem.length);
-    if (!q) return;
-    var n = Math.max(1, Math.ceil(q / sz)), mode = c.modes[s] || (n >= 3 ? 'top' : 'snake'), asg = mem.map(function () { return 0; });
+    var mem = rank.filter(function (r) { return S(r) === s; }), q = Math.max((D.q && D.q[s]) || 0, mem.length), np = pl && pl.n[s] > 0 ? pl.n[s] : 0;
+    if (!q && !np) return;
+    var n = np || Math.max(1, Math.ceil(q / sz)), mode = (pl && pl.modes[s]) || c.modes[s] || (n >= 3 ? 'top' : 'snake'), asg = mem.map(function () { return 0; });
     if (n > 1) {
       var start = 0, k = n, off = 0, seq = [], i;
       if (mode === 'top') { start = Math.min(sz, mem.length); k = n - 1; off = 1; }
@@ -1131,74 +1393,104 @@ function dRooms(c, rank) { // แบ่งห้องในแต่ละส�
   });
   return { rooms: rooms, roomOf: roomOf, rank: rank };
 }
-function dRes() { // ลำดับสำรอง = ลำดับในแท็บคัดเลือก (เหมือนแท็บรายชื่อสำรอง และบัญชีแนบท้าย (2) ปี 69)
-  var L = CFG.stl;
-  return (D.sel || []).filter(function (r) { return S(r) === L[2]; });
+function dPlan(M) { // แผนห้องเรียนปัจจุบัน (ส่งไปล็อกพร้อมรายการแรกหลังประกาศ)
+  var o = { r0: M.c.r0, rsz: M.c.rsz, n: {}, modes: {}, at: now() };
+  M.P.rooms.forEach(function (r) { o.n[r.s] = (o.n[r.s] || 0) + 1; if (r.n > 1) o.modes[r.s] = r.mode; });
+  return o;
 }
-function isM3(r) { return str(r[5]) === CFG.m3; }
-function dTy(r) { var g = str(r[6]); return esc(str(r[5]) || '–') + (g && g !== CFG.tg ? ' · ' + esc(g) : ''); } // ประเภท F (· G ถ้าเป็นความสามารถพิเศษ)
-function dFold(ev) {
-  var W = {}, R = {}, N = {};
-  (ev || []).forEach(function (e) {
-    var c = e[2], id = e[3];
-    if (c === 'W') W[id] = e; else if (c === 'UW') delete W[id];
-    else if (c === 'RA' || c === 'RD' || c === 'RN') R[id] = e; else if (c === 'RU') delete R[id];
-    if (e[5] && c !== 'UW' && c !== 'RU') N[id] = e[5];
-  });
-  return { W: W, R: R, N: N };
+function dRes() { return LV.res(D.sel || []); } // ลำดับสำรอง (ม.4 = ลำดับในแท็บคัดเลือก · ม.1 = ในเขตก่อน แล้วนอกเขต) = แท็บรายชื่อสำรอง และบัญชีแนบท้าย (2)
+function isM3(r) { return LV.m4 && str(r[5]) === CFG.m3; }
+function dTy(r) { return LV.ty(r); }
+function dBase(c, res) { // ข้อมูลตั้งต้นให้กติกาหลังประกาศผล (LC) — สร้างแบบเดียวกับเซิร์ฟเวอร์
+  var b = { main: {}, res: [], info: {}, q: {}, streams: CFG.streams, cfg: c };
+  D.main.forEach(function (r) { b.main[str(r[1])] = { s: S(r), tot: parseFloat(r[16]) || 0, m3: isM3(r) }; });
+  res.forEach(function (r) { var id = str(r[1]); b.res.push(id); b.info[id] = { tot: parseFloat(r[16]) || 0, m3: isM3(r) }; });
+  CFG.streams.forEach(function (s) { b.q[s] = +((D.q || {})[s]) || 0; });
+  return b;
 }
 function dModel() {
-  var c = dcfg(), P = dRooms(c, dRank()), res = dRes(), f = dFold(DS && DS.ev), ex = (DS && DS.ex) || {};
-  var M = { c: c, P: P, res: res, f: f, ex: ex, resNo: {}, resRow: {}, mainRow: {}, acc: [] };
+  var c = dcfg(), P = dRooms(c, dRank()), res = dRes(), ex = (DS && DS.ex) || {}, base = dBase(c, res), f = LC.fold(DS && DS.ev, base);
+  var M = { c: c, P: P, res: res, f: f, base: base, ex: ex, resNo: {}, resRow: {}, mainRow: {}, acc: [] };
   res.forEach(function (r, i) { var id = str(r[1]); M.resNo[id] = i + 1; M.resRow[id] = r; });
   D.main.forEach(function (r) { M.mainRow[str(r[1])] = r; });
-  M.acc = res.filter(function (r) { var e = f.R[str(r[1])]; return e && e[2] === 'RA'; });
-  M.nAcc = Object.keys(f.R).filter(function (k) { return f.R[k][2] === 'RA'; }).length; // ตรงกับการนับของเซิร์ฟเวอร์
-  M.seats = Object.keys(f.W).length; M.free = M.seats - M.nAcc;
+  M.acc = res.filter(function (r) { return LC.isAcc(f, str(r[1])); });
+  var se = LC.seats(f);
+  M.nAcc = se.acc; M.seats = se.w; M.seatsAll = se.wAll; M.free = se.free; // ตรงกับการนับของเซิร์ฟเวอร์ (ผู้สละสิทธิ์หลังวันปิดรับสำรองไม่เปิดที่ว่างให้สำรอง)
+  M.cutPassed = !!(f.cut && Date.now() >= f.cut);
   M.next = null;
   for (var i = 0; i < res.length; i++) if (!f.R[str(res[i][1])]) { M.next = res[i]; break; }
   M.appendNo = c.rapp && P.rooms.some(function (x) { return x.no === c.rapp; }) ? c.rapp : (P.rooms.length ? P.rooms[P.rooms.length - 1].no : 0);
+  M.appendRoom = P.rooms.filter(function (x) { return x.no === M.appendNo; })[0] || null;
   M.pending = D.main.filter(function (r) { return CFG.streams.indexOf(S(r)) < 0; });
   M.m3 = D.main.filter(isM3).length; M.gen = D.main.length - M.m3; // นักเรียน ม.3 โรงเรียนเดิม / นักเรียนทั่วไป (รวมความสามารถพิเศษ)
+  M.split = LV.split(D.main);
   M.sc = Object.keys(ex).some(function (k) { return ex[k][0] && (M.mainRow[k] || M.resRow[k]); });
   M.tel = Object.keys(ex).some(function (k) { return ex[k][1] || ex[k][2] || ex[k][3]; });
   M.missDate = ['dExam', 'dAnn', 'dRep', 'dEnr'].filter(function (k) { return !c[k]; });
   M.badYear = ['dExam', 'dAnn', 'dRep', 'dEnr'].filter(function (k) { var m = /^(\d{4})-/.exec(c[k] || ''); return m && String(+m[1] + 543) !== String(c.yr); });
+  M.R = dRoster(M); // ห้องเรียนปัจจุบันหลังสละสิทธิ์ · เรียกสำรอง · เปลี่ยนแผน
   return M;
 }
 function dRow(M, id) { return M.mainRow[id] || M.resRow[id] || null; }
 function dName(id) { var M = DM || dModel(), r = dRow(M, id); return r ? str(r[2]) + str(r[3]) + ' ' + str(r[4]) : id; }
 function dSch(M, id) { var s = (M.ex[id] || [])[0]; if (s) return s; var r = dRow(M, id); return r && isM3(r) ? LV.home : ''; } // ม.3 เดิมไม่มีข้อมูล = โรงเรียนเดิม
 function dWhere(M, id) {
+  var cur = M.R && M.R.of[id];
+  if (cur && !M.P.roomOf[id]) return (M.resNo[id] ? 'สำรองลำดับที่ ' + M.resNo[id] + ' ' : '') + '(' + LV.s + '/' + cur.no + ')';
+  if (cur && cur.no !== M.P.roomOf[id].no) return LV.s + '/' + cur.no + ' (เดิม ' + LV.s + '/' + M.P.roomOf[id].no + ')';
   var rm = M.P.roomOf[id];
   if (rm) return LV.s + '/' + rm.no;
-  return M.resNo[id] ? 'สำรองลำดับที่ ' + M.resNo[id] + (M.f.R[id] && M.f.R[id][2] === 'RA' ? ' (' + LV.s + '/' + M.appendNo + ')' : '') : '';
+  return M.resNo[id] ? 'สำรองลำดับที่ ' + M.resNo[id] + (LC.isAcc(M.f, id) ? ' (' + LV.s + '/' + M.appendNo + ')' : '') : '';
 }
-function dEnroll(M) { // ใบมอบตัว: ตัดผู้สละสิทธิ์ เรียงเลขที่สมัคร แล้วเติมสำรองที่รับสิทธิ์ต่อท้ายห้องที่กำหนด
-  return M.P.rooms.map(function (rm) {
-    var list = byId(rm.mem.filter(function (r) { return !M.f.W[str(r[1])]; })).map(function (r) { return { r: r }; });
-    if (rm.no === M.appendNo) M.acc.forEach(function (r) { if (!M.f.W[str(r[1])]) list.push({ r: r, add: M.resNo[str(r[1])] }); });
-    return { room: rm, list: list };
+/** ห้องเรียนปัจจุบัน: ตัวจริงตามห้องที่ประกาศ (ตัดผู้สละสิทธิ์และผู้ย้ายสายออก) + สำรองที่รับสิทธิ์ต่อท้ายห้องที่กำหนด + ผู้ย้ายสายต่อท้ายห้องใหม่
+ *  ลำดับในห้อง: ตัวจริงเรียงเลขที่สมัคร แล้วต่อด้วยคนที่เข้ามาภายหลังตามลำดับเวลาที่บันทึก (ไม่แทรกกลางรายชื่อ) · เลขที่ในห้องนับใหม่ตามรายชื่อปัจจุบัน */
+function dRoster(M) {
+  var f = M.f, rooms = {}, of = {}, order = [];
+  M.P.rooms.forEach(function (rm) { rooms[rm.no] = { room: rm, list: [] }; order.push(rm.no); });
+  var where = function (id) { var h = f.ch[id]; return h && h.length ? h[h.length - 1] : null; };
+  M.P.rooms.forEach(function (rm) {
+    byId(rm.mem).forEach(function (r) { var id = str(r[1]); if (!f.W[id] && !where(id)) rooms[rm.no].list.push({ r: r, id: id }); });
   });
+  var late = []; // สำรองที่รับสิทธิ์ + ผู้ย้ายสาย ตามลำดับเวลาที่บันทึก
+  (DS && DS.ev || []).forEach(function (e, k) {
+    var id = e[3];
+    if (e[2] === 'RA' && LC.isAcc(f, id) && f.R[id] === e && !f.W[id] && !where(id)) late.push({ id: id, no: +e[9] || M.appendNo, k: k, add: M.resNo[id] });
+    if (e[2] === 'CA' && !f.W[id]) { var w = where(id); if (w && w.e === e) late.push({ id: id, no: w.room || 0, k: k, mv: 1 }); }
+  });
+  late.forEach(function (x) {
+    var r = dRow(M, x.id); if (!r) return;
+    var no = rooms[x.no] ? x.no : (x.mv ? dRoomFor(M, LC.stream(f, M.base, x.id), rooms) : M.appendNo);
+    if (!rooms[no]) return;
+    var from = M.P.roomOf[x.id];
+    rooms[no].list.push({ r: r, id: x.id, add: x.add, mv: x.mv ? (from ? LV.s + '/' + from.no : M.resNo[x.id] ? 'สำรอง ' + M.resNo[x.id] : '') : '' });
+  });
+  order.forEach(function (no) { rooms[no].list.forEach(function (y, i) { y.no = i + 1; of[y.id] = { no: no, k: i + 1 }; }); });
+  return { rooms: order.map(function (no) { return rooms[no]; }), by: rooms, of: of };
 }
-function dcheck(p) { // ตรวจแบบเดียวกับเซิร์ฟเวอร์ ก่อนบันทึก
-  var M = dModel(), id = p.id, f = M.f, e = f.R[id], ri = M.resNo[id] ? M.resNo[id] - 1 : -1, isAcc = !!(e && e[2] === 'RA');
-  switch (p.t) {
-    case 'W': if (!M.mainRow[id] && !isAcc) return 'เลขที่สมัคร ' + id + ' ไม่อยู่ในรายชื่อผู้ผ่านการคัดเลือก'; if (f.W[id]) return 'บันทึกสละสิทธิ์ไว้แล้ว'; return '';
-    case 'UW': if (!f.W[id]) return 'ไม่มีการสละสิทธิ์'; if (M.nAcc > M.seats - 1) return 'ยกเลิกไม่ได้ เพราะเรียกสำรองมาแทนที่นั่งนี้แล้ว — ยกเลิกผล "รับสิทธิ์" ของสำรองคนล่าสุดก่อน'; return '';
-    case 'RA':
-      if (ri < 0) return 'ไม่อยู่ในรายชื่อสำรอง'; if (e) return 'บันทึกผลไว้แล้ว';
-      for (var k = 0; k < ri; k++) if (!f.R[str(M.res[k][1])]) return 'ต้องเรียกตามลำดับ — สำรองลำดับที่ ' + (k + 1) + ' ยังไม่ได้บันทึกผล';
-      if (M.free <= 0) return 'ยังไม่มีที่ว่าง (สละสิทธิ์ ' + M.seats + ' · รับสิทธิ์แล้ว ' + M.nAcc + ')';
-      return '';
-    case 'RD': case 'RN': if (ri < 0) return 'ไม่อยู่ในรายชื่อสำรอง'; if (e) return 'บันทึกผลไว้แล้ว — กดยกเลิกผลก่อนถ้าต้องการแก้'; return '';
-    case 'RU': if (!e) return 'ยังไม่มีผลให้ยกเลิก'; if (isAcc && f.W[id]) return 'สำรองคนนี้ถูกบันทึกสละสิทธิ์แล้ว — ยกเลิกการสละสิทธิ์ก่อน'; return '';
-  }
-  return 'รายการไม่ถูกต้อง';
+/** ห้องที่จะรับผู้ย้ายเข้าสาย s: ห้องของสายนั้นที่คนน้อยที่สุดตอนนี้ (เท่ากัน = ห้องหลัง) */
+function dRoomFor(M, s, rooms) {
+  rooms = rooms || (M.R && M.R.by) || {};
+  var best = 0, n = 1e9;
+  M.P.rooms.forEach(function (rm) { if (rm.s !== s) return; var k = rooms[rm.no] ? rooms[rm.no].list.length : rm.mem.length; if (k <= n) { n = k; best = rm.no; } });
+  return best;
 }
-function dEv(t, id, note) {
-  var M = DM || dModel();
-  return dact('docEv', { t: t, id: id, d: dWhere(M, id), n: note || '', by: DBY, nm: dName(id) }, { W: 'บันทึกสละสิทธิ์', UW: 'ยกเลิกการสละสิทธิ์', RA: 'บันทึกสำรองรับสิทธิ์', RD: 'บันทึกสำรองไม่รับสิทธิ์', RN: 'บันทึกติดต่อไม่ได้', RU: 'ยกเลิกผลการเรียก' }[t]);
+function dEnroll(M) { // ใบมอบตัว/บัญชีรายห้องปัจจุบัน: ตัดผู้สละสิทธิ์ เติมสำรองที่รับสิทธิ์และผู้ย้ายสายต่อท้ายห้อง
+  return M.R.rooms.map(function (x) { return { room: x.room, list: x.list.map(function (y) { return { r: y.r, add: y.add, mv: y.mv }; }) }; });
+}
+function dcheck(p) { // ตรวจแบบเดียวกับเซิร์ฟเวอร์ (กติกาชุดเดียวกัน) ก่อนบันทึก
+  var M = dModel(), now = +p.at || Date.now();
+  if (p.ids) { var okN = p.ids.filter(function (id) { return !LC.check(M.f, M.base, { t: p.t, id: id }, now); }).length; return okN ? '' : 'ไม่มีรายการที่บันทึกได้'; }
+  if ((p.t === 'CA' || p.t === 'CU') && p.pair) return LC.check(M.f, M.base, { t: p.t, id: p.id, pair: p.pair }, now) || LC.check(M.f, M.base, { t: p.t, id: p.pair, pair: p.id }, now);
+  return LC.check(M.f, M.base, p, now);
+}
+var EV_LABEL = { W: 'บันทึกสละสิทธิ์', UW: 'ยกเลิกการสละสิทธิ์', RA: 'บันทึกสำรองรับสิทธิ์', RD: 'บันทึกสำรองไม่รับสิทธิ์', RN: 'บันทึกติดต่อไม่ได้', RU: 'ยกเลิกผลการเรียก',
+  P: 'บันทึกรายงานตัว', UP: 'ยกเลิกการรายงานตัว', E: 'บันทึกมอบตัว', UE: 'ยกเลิกการมอบตัว', CQ: 'บันทึกคำร้องเปลี่ยนแผน', CA: 'อนุมัติคำร้อง', CR: 'ไม่อนุมัติคำร้อง',
+  CX: 'ถอนคำร้อง', CU: 'ยกเลิกผลพิจารณา', ID: 'ยืนยันรหัสนักเรียน' };
+function dEv(t, id, note, extra) {
+  var M = DM || dModel(), p = { t: t, id: id, d: dWhere(M, id), n: note || '', by: DBY, nm: dName(id) };
+  if (t === 'RA' && M.appendRoom) { p.s = M.appendRoom.s; p.room = M.appendNo; } // สำรองที่รับสิทธิ์เข้าห้องท้าย (สายของห้องนั้น)
+  for (var k in (extra || {})) p[k] = extra[k];
+  return dact('docEv', p, EV_LABEL[t]);
 }
 
 /* ---------- วันที่ / ข้อความ ---------- */
@@ -1221,7 +1513,7 @@ function tels(M, id, links) {
 function colg(w) { return '<colgroup>' + w.map(function (x) { return '<col style="width:' + x + 'mm">'; }).join('') + '</colgroup>'; }
 function chunks(list, first, rest) { var o = [list.slice(0, first)], i = first; while (i < list.length) { o.push(list.slice(i, i + rest)); i += rest; } return o; }
 function nm3(r, tail) { return '<td class="n1">' + esc(str(r[2])) + '</td><td class="n2 fit">' + esc(str(r[3])) + '</td><td class="n3 fit">' + esc(str(r[4])) + (tail || '') + '</td>'; }
-function typ1(r) { return '<td class="c fit">' + esc(str(r[5])) + '</td>'; } // ประเภท (ม.3 เดิม / ทั่วไป) แบบประกาศปี 69
+function typ1(r) { return LV.tyCells(r); } // ช่องประเภทในบัญชีแนบท้าย (ม.4 = ม.3 เดิม/ทั่วไป · ม.1 = เขต + ประเภท) แบบประกาศปี 69
 function pgAnn(M) {
   var c = M.c, yr = c.yr ? esc(c.yr) : dots(6), b = function (s) { return '<b>' + s + '</b>'; };
   return '<section class="pg ann" contenteditable="true" spellcheck="false">' +
@@ -1232,7 +1524,7 @@ function pgAnn(M) {
     '<div class="rule">.......................................................................................</div>' +
     '<p>ตามที่ โรงเรียนดัดดรุณี&nbsp; ได้ดำเนินการสอบคัดเลือกนักเรียนเข้าศึกษาต่อชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + yr + ' ประเภท ห้องเรียนปกติ&nbsp; เมื่อวันที่ ' + dd(c.dExam) + ' นั้น</p>' +
     '<p>บัดนี้ คณะกรรมการสอบคัดเลือก ได้ดำเนินการประมวลผลการสอบเสร็จสิ้นเรียบร้อยแล้ว จึงประกาศรายชื่อนักเรียนที่ผ่านการสอบคัดเลือกเข้าศึกษาต่อชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + yr +
-    ' ประเภทห้องเรียนปกติ จำนวน ' + M.P.rank.length + ' คน แบ่งเป็นนักเรียน ม.3 โรงเรียนเดิม จำนวน ' + M.m3 + ' คน นักเรียนทั่วไป จำนวน ' + M.gen + ' คน ' +
+    ' ประเภทห้องเรียนปกติ จำนวน ' + M.P.rank.length + ' คน แบ่งเป็น' + LV.annSplit(M.split) + ' ' +
     b('รายชื่อตามบัญชีแนบท้าย (1)') + ' และรายชื่อสำรอง ' + b('ตามบัญชีแนบท้าย (2)') + ' ให้นักเรียนที่ผ่านการคัดเลือก ดำเนินการดังนี้</p><ol>' +
     '<li>1)&nbsp; ตรวจสอบลำดับที่ได้ เลขที่สมัครสอบ และชื่อ-สกุล ให้ถูกต้องครบถ้วน</li>' +
     '<li>2)&nbsp; นักเรียนที่ผ่านการคัดเลือก ตามบัญชีแนบท้าย (1) มารายงานตัว ' + b('ในวันที่ ' + dd(c.dRep, '', 16)) + ' ณ ' + esc(c.place) + ' เวลา ' + esc(c.tRep) + ' และมามอบตัว ' + b('ในวันที่ ' + dd(c.dEnr, '', 16)) + '</li>' +
@@ -1259,8 +1551,8 @@ function pgAx1(M) {
   var sc = M.sc, yr = esc(M.c.yr), rh = '5.6mm';
   return pgList(M, M.P.rank.map(function (r, i) { return { r: r, k: i + 1 }; }), {
     title: 'บัญชีแนบท้าย (1)<br>รายชื่อผู้ผ่านการสอบคัดเลือกนักเรียนเข้าศึกษาต่อชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + yr + '<br>ประเภท ห้องเรียนปกติ (เรียงตามลำดับคะแนน)',
-    w: sc ? [9, 18, 13, 20, 23, 15, 34, 13, 45] : [10, 19, 14, 24, 28, 17, 15, 63], sig: 1,
-    head: '<tr><th>ลำดับที่</th><th>เลขที่สมัครสอบ</th><th colspan="3">ชื่อ-สกุล</th><th>ประเภท</th>' + (sc ? '<th>โรงเรียนเดิม</th>' : '') + '<th>ห้องเรียน</th><th>กลุ่มการเรียน</th></tr>',
+    w: LV.ax1W(sc), sig: 1,
+    head: '<tr><th>ลำดับที่</th><th>เลขที่สมัครสอบ</th><th colspan="3">ชื่อ-สกุล</th>' + LV.tyHead + (sc ? '<th>โรงเรียนเดิม</th>' : '') + '<th>ห้องเรียน</th><th>กลุ่มการเรียน</th></tr>',
     row: function (x) {
       var r = x.r, id = str(r[1]), rm = M.P.roomOf[id];
       return '<tr style="height:' + rh + '"><td class="c">' + x.k + '</td><td class="c">' + esc(id) + '</td>' + nm3(r) + typ1(r) + (sc ? '<td class="sm fit">' + esc(dSch(M, id)) + '</td>' : '') +
@@ -1272,8 +1564,8 @@ function pgAx2(M) {
   var sc = M.sc, yr = esc(M.c.yr);
   return pgList(M, M.res.map(function (r, i) { return { r: r, k: i + 1 }; }), {
     title: 'บัญชีแนบท้าย (2)<br>รายชื่อผู้ผ่านการสอบคัดเลือกนักเรียนเข้าศึกษาต่อชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + yr + ' (สำรอง)<br>ประเภท ห้องเรียนปกติ (เรียงตามลำดับคะแนน)',
-    w: sc ? [12, 22, 15, 27, 33, 18, 63] : [14, 26, 17, 36, 47, 50], sig: 1,
-    head: '<tr><th>ลำดับที่</th><th>เลขที่สมัครสอบ</th><th colspan="3">ชื่อ-สกุล</th><th>ประเภท</th>' + (sc ? '<th>โรงเรียนเดิม</th>' : '') + '</tr>',
+    w: LV.ax2W(sc), sig: 1,
+    head: '<tr><th>ลำดับที่</th><th>เลขที่สมัครสอบ</th><th colspan="3">ชื่อ-สกุล</th>' + LV.tyHead + (sc ? '<th>โรงเรียนเดิม</th>' : '') + '</tr>',
     row: function (x) { var r = x.r, id = str(r[1]); return '<tr style="height:5.6mm"><td class="c">' + x.k + '</td><td class="c">' + esc(id) + '</td>' + nm3(r) + typ1(r) + (sc ? '<td class="sm fit">' + esc(dSch(M, id)) + '</td>' : '') + '</tr>'; }
   });
 }
@@ -1297,16 +1589,16 @@ function pgSign(o) { // ใบลงชื่อ: 1 ห้องต่อหน�
 }
 var T2 = 'รายชื่อผู้ผ่านการสอบคัดเลือกนักเรียนเข้าศึกษาต่อชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ประเภท ห้องเรียนปกติ';
 function byId(list) { return list.slice().sort(function (a, b) { var x = str(a[1]), y = str(b[1]); return (+x - +y) || (x < y ? -1 : x > y ? 1 : 0); }); } // เรียงเลขที่สมัคร (ตัวเลข: เลข ม.3 เดิม 5 หลักก่อน)
-function pgRep(M) { // ใบลงชื่อรายงานตัว: รายห้อง เรียงเลขที่สมัคร (แบบปี 69) + ใบลงชื่อสำรองเรียงลำดับสำรอง
-  var t1 = 'บัญชีรับรายงานตัวนักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + M.c.yr, o = { t1: t1, t2: '', date: M.c.dRep, cnt: 'มารายงานตัว', who: 'รับรายงานตัว' };
-  o.groups = M.P.rooms.map(function (rm) { return { head: LV.s + '/' + rm.no + ' ' + LV.room + rm.g, rows: byId(rm.mem).map(function (r, i) { return { no: i + 1, r: r }; }) }; });
+function pgRep(M) { // ใบลงชื่อรายงานตัว: รายห้อง (ม.4 เรียงเลขที่สมัคร · ม.1 เรียงลำดับคะแนน แบบปี 69) + ใบลงชื่อสำรองเรียงลำดับสำรอง
+  var t1 = 'บัญชีรับรายงานตัวนักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + M.c.yr, o = { t1: t1, t2: LV.repT2 ? T2 : '', date: M.c.dRep, cnt: 'มารายงานตัว', who: 'รับรายงานตัว' };
+  o.groups = M.P.rooms.map(function (rm) { return { head: LV.s + '/' + rm.no + ' ' + LV.room + rm.g, rows: LV.repSort(rm.mem).map(function (r, i) { return { no: i + 1, r: r }; }) }; });
   var h = pgSign(o);
   if (M.res.length) { o.t2 = T2 + ' (สำรอง)'; o.groups = [{ head: '', rows: M.res.map(function (r, i) { return { no: i + 1, r: r }; }) }]; h += pgSign(o); }
   return h;
 }
 function pgEnr(M) {
   var t1 = 'บัญชีรับมอบตัวนักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + M.c.yr, o = { t1: t1, t2: '', date: M.c.dEnr, cnt: 'มามอบตัว', who: 'รับมอบตัว' };
-  o.groups = dEnroll(M).map(function (x) { return { head: LV.s + '/' + x.room.no + ' ' + LV.room + x.room.g, rows: x.list.map(function (y, i) { return { no: i + 1, r: y.r, tag: y.add ? '(สำรอง ' + y.add + ')' : '' }; }) }; });
+  o.groups = dEnroll(M).map(function (x) { return { head: LV.s + '/' + x.room.no + ' ' + LV.room + x.room.g, rows: x.list.map(function (y, i) { return { no: i + 1, r: y.r, tag: y.mv ? '(ย้ายจาก ' + y.mv + ')' : y.add ? '(สำรอง ' + y.add + ')' : '' }; }) }; });
   var h = pgSign(o), rem = M.res.filter(function (r) { var e = M.f.R[str(r[1])]; return !e || e[2] === 'RN'; });
   if (rem.length) {
     o.t2 = T2 + ' (สำรอง)';
@@ -1327,7 +1619,7 @@ function pgBoard(M) {
 }
 function pgTel(M) {
   var groups = [{ head: 'รายชื่อสำรอง (โทรเรียกตามลำดับที่)', rows: M.res.map(function (r) { var id = str(r[1]); return { no: M.resNo[id], r: r, st: resSt(M, id) || (M.f.N[id] || '') }; }) }];
-  M.P.rooms.forEach(function (rm) { groups.push({ head: LV.s + '/' + rm.no + ' ' + LV.room + rm.g, rows: byId(rm.mem).map(function (r, i) { var id = str(r[1]); return { no: i + 1, r: r, st: M.f.W[id] ? 'สละสิทธิ์' : '' }; }) }); });
+  M.P.rooms.forEach(function (rm) { groups.push({ head: LV.s + '/' + rm.no + ' ' + LV.room + rm.g, rows: LV.repSort(rm.mem).map(function (r, i) { var id = str(r[1]); return { no: i + 1, r: r, st: M.f.W[id] ? 'สละสิทธิ์' : '' }; }) }); });
   return groups.map(function (g) {
     return pgList(M, g.rows, {
       title: 'บัญชีเบอร์โทรศัพท์ผู้ปกครอง ' + LV.s + ' ปีการศึกษา ' + esc(M.c.yr) + ' (ใช้ภายในคณะกรรมการ)<br>' + esc(g.head), first: 44, rest: 46, stamp: 1,
@@ -1341,27 +1633,29 @@ function pgSum(M) {
   var W = Object.keys(M.f.W).map(function (id) { return M.f.W[id]; }).sort(function (a, b) { return (DS.ev.indexOf(a)) - (DS.ev.indexOf(b)); });
   var RR = M.res.filter(function (r) { return M.f.R[str(r[1])]; }), n = function (c) { return RR.filter(function (r) { return M.f.R[str(r[1])][2] === c; }).length; };
   var head = 'สรุปการสละสิทธิ์และการเรียกรายชื่อสำรอง<br>นักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + esc(M.c.yr) + ' ประเภท ห้องเรียนปกติ<br><span style="font-weight:400">ข้อมูล ณ วันที่ ' + nowTh() + ' น.</span>';
-  var cnt = '<div class="note" style="margin:0 0 2mm">สละสิทธิ์ <b>' + M.seats + '</b> คน · สำรองรับสิทธิ์ <b>' + M.nAcc + '</b> คน (เติมต่อท้าย ' + LV.s + '/' + M.appendNo + ') · ที่ว่างคงเหลือ <b>' + Math.max(0, M.free) + '</b> ที่ · สำรองไม่รับสิทธิ์ ' + n('RD') + ' · ติดต่อไม่ได้ ' + n('RN') + '</div>';
+  var cnt = '<div class="note" style="margin:0 0 2mm">สละสิทธิ์ <b>' + M.seatsAll + '</b> คน · สำรองรับสิทธิ์ <b>' + M.nAcc + '</b> คน (เติมต่อท้าย ' + LV.s + '/' + M.appendNo + ') · ที่ว่างคงเหลือ <b>' + Math.max(0, M.free) + '</b> ที่ · สำรองไม่รับสิทธิ์ ' + n('RD') + ' · ติดต่อไม่ได้ ' + n('RN') + '</div>';
   var nmr = function (id) { var r = dRow(M, id); return r ? nm3(r) : '<td class="n1"></td><td class="n2">' + esc(id) + '</td><td class="n3"></td>'; };
   var sign = '<div class="ft" style="margin-top:8mm;display:flex;justify-content:space-around;text-align:center;font-size:14pt;line-height:1.6"><div>ลงชื่อ...........................................<br>(...........................................)<br>หัวหน้างานรับนักเรียน</div><div>ลงชื่อ...........................................<br>(...........................................)<br>ผู้ตรวจสอบ</div></div>';
   var h = pgList(M, W, {
     title: head, first: 34, rest: 46, stamp: 1, w: [9, 19, 13, 21, 24, 23, 37, 26, 18],
     head: '<tr><th>ที่</th><th>เลขที่สมัคร</th><th colspan="3">ผู้สละสิทธิ์</th><th>ห้อง</th><th>เหตุผล / หมายเหตุ</th><th>บันทึกเมื่อ</th><th>ผู้บันทึก</th></tr>',
-    row: function (e) { return '<tr style="height:5.6mm"><td class="c">' + (W.indexOf(e) + 1) + '</td><td class="c">' + esc(e[3]) + '</td>' + nmr(e[3]) + '<td class="c sm fit">' + esc(e[4] || dWhere(M, e[3])) + '</td><td class="sm fit">' + esc(e[5]) + '</td><td class="c xs">' + esc(beT(e[0])) + '</td><td class="xs fit">' + esc(e[1]) + '</td></tr>'; }
+    row: function (e) { return '<tr style="height:5.6mm"><td class="c">' + (W.indexOf(e) + 1) + '</td><td class="c">' + esc(e[3]) + '</td>' + nmr(e[3]) + '<td class="c sm fit">' + esc(e[4] || dWhere(M, e[3])) + '</td><td class="sm fit">' + esc([e[5], STG_SHORT[stgKey(e[7])]].filter(Boolean).join(' · ')) + '</td><td class="c xs">' + esc(beT(e[0])) + '</td><td class="xs fit">' + esc(e[1]) + '</td></tr>'; }
   }).replace('<table>', cnt + '<table>');
   h += pgList(M, RR, {
     title: 'ผลการเรียกรายชื่อสำรอง (เรียงตามลำดับที่)', first: 44, rest: 46, stamp: 1, w: [12, 19, 13, 21, 24, 20, 37, 26, 18],
     head: '<tr><th>สำรอง</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>ผล</th><th>หมายเหตุ</th><th>บันทึกเมื่อ</th><th>ผู้บันทึก</th></tr>',
     row: function (r) { var id = str(r[1]), e = M.f.R[id]; return '<tr style="height:5.6mm"><td class="c">' + M.resNo[id] + '</td><td class="c">' + esc(id) + '</td>' + nm3(r) + '<td class="c sm">' + esc(resSt(M, id)) + '</td><td class="sm fit">' + esc(e[5]) + '</td><td class="c xs">' + esc(beT(e[0])) + '</td><td class="xs fit">' + esc(e[1]) + '</td></tr>'; }
   });
-  var LB = { W: 'สละสิทธิ์', UW: 'ยกเลิกการสละสิทธิ์', RA: 'สำรองรับสิทธิ์', RD: 'สำรองไม่รับสิทธิ์', RN: 'ติดต่อสำรองไม่ได้', RU: 'ยกเลิกผลการเรียก' };
+  var LB = LC.LB;
   h += pgList(M, DS.ev.slice(), {
     title: 'ประวัติการบันทึกทั้งหมด (รวมรายการที่ยกเลิกภายหลัง)', first: 40, rest: 46, stamp: 1, w: [26, 30, 19, 13, 21, 24, 57], tail: sign,
     head: '<tr><th>วันเวลา</th><th>รายการ</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>รายละเอียด · ผู้บันทึก</th></tr>',
-    row: function (e) { return '<tr style="height:5.6mm"><td class="c xs">' + esc(beT(e[0])) + '</td><td class="sm fit">' + esc(LB[e[2]] || e[2]) + '</td><td class="c">' + esc(e[3]) + '</td>' + nmr(e[3]) + '<td class="xs fit">' + esc([e[4], e[5], e[1]].filter(Boolean).join(' · ')) + '</td></tr>'; }
+    row: function (e) { return '<tr style="height:5.6mm"><td class="c xs">' + esc(beT(e[0])) + '</td><td class="sm fit">' + esc(LB[e[2]] || e[2]) + '</td><td class="c">' + esc(e[3]) + '</td>' + nmr(e[3]) + '<td class="xs fit">' + esc([e[4], e[8] && /^C/.test(e[2]) ? 'สาย ' + e[8] + (e[9] ? ' ' + LV.s + '/' + e[9] : '') : '', e[5], STG_SHORT[stgKey(e[7])], e[1]].filter(Boolean).join(' · ')) + '</td></tr>'; }
   });
   return h;
 }
+var STG_SHORT = { pre: 'สละก่อนรายงานตัว', rep: 'สละหลังรายงานตัว', enr: 'สละหลังมอบตัว', acc: 'สำรองสละหลังรับสิทธิ์' };
+function stgKey(t) { t = str(t); for (var k in LC.STG) if (LC.STG[k] === t) return k; return ''; }
 function dFit(root) { // ย่อตัวอักษรเฉพาะช่องที่ยาวเกินความกว้าง (อ่านทั้งหมดก่อน แล้วค่อยแก้ทีเดียว)
   var cells = [].slice.call(root.querySelectorAll('td.fit')), big = [];
   cells.forEach(function (td) { if (td.scrollWidth > td.clientWidth + 1) big.push([td, td.clientWidth / td.scrollWidth, parseFloat(getComputedStyle(td).fontSize)]); });
@@ -1370,7 +1664,7 @@ function dFit(root) { // ย่อตัวอักษรเฉพาะช่�
 }
 
 /* ---------- ตัวอย่างก่อนพิมพ์ / บันทึก PDF ---------- */
-var DOCS = [
+var DOCS = [ // [รหัส, ชื่อ, ชื่อไฟล์, ต้องจัดสายครบก่อน]
   ['ann', 'ประกาศผล + บัญชีแนบท้าย (1)(2)', 'ประกาศ', 1],
   ['rep', 'ใบลงชื่อรายงานตัว', 'ใบลงชื่อรายงานตัว', 1],
   ['enr', 'ใบลงชื่อมอบตัว', 'ใบลงชื่อมอบตัว', 1],
@@ -1378,11 +1672,14 @@ var DOCS = [
   ['tel', 'บัญชีเบอร์โทรศัพท์ผู้ปกครอง', 'บัญชีเบอร์โทร', 1],
   ['sum', 'สรุปการสละสิทธิ์และเรียกสำรอง', 'สรุปสละสิทธิ์', 0]
 ];
-function dPrev(kind) {
-  var M = DM = dModel(), h = '', d = DOCS.filter(function (x) { return x[0] === kind; })[0];
+var DOC_X = {}, DOC_DESC = {}, DOC_OFF = {}; // เอกสารเพิ่มเติมจากส่วนอื่น (รายงานตัว · เปลี่ยนแผน · รหัสนักเรียน)
+var DOC_FN = { ann: function (M) { return pgAnn(M) + pgAx1(M) + (M.res.length ? pgAx2(M) : ''); }, rep: pgRep, enr: pgEnr, board: pgBoard, tel: pgTel, sum: pgSum };
+function dPrev(kind, arg) {
+  var M = DM = dModel(), h = '', d = DOCS.filter(function (x) { return x[0] === kind; })[0] || (DOC_X[kind] ? [kind, DOC_X[kind][0], DOC_X[kind][1], DOC_X[kind][2]] : null);
   if (!d) return;
   if (d[3] && M.pending.length) { toast('ยังจัดสายไม่ครบ ' + M.pending.length + ' คน — จัดให้ครบที่ขั้นที่ 2 ก่อน', true); return; }
-  h = kind === 'ann' ? pgAnn(M) + pgAx1(M) + (M.res.length ? pgAx2(M) : '') : kind === 'rep' ? pgRep(M) : kind === 'enr' ? pgEnr(M) : kind === 'board' ? pgBoard(M) : kind === 'tel' ? pgTel(M) : pgSum(M);
+  h = DOC_FN[kind](M, arg);
+  if (!h) return;
   $('pgs').innerHTML = h;
   $('prvt').textContent = d[2] + ' ' + LV.s + ' ปีการศึกษา ' + M.c.yr;
   var np = $('pgs').querySelectorAll('.pg').length;
@@ -1412,9 +1709,10 @@ function dPrint() {
   setTimeout(function () { window.print(); setTimeout(function () { document.title = t0; }, 800); }, 50);
 }
 function dcsv(M) {
-  var rows = [];
-  dEnroll(M).forEach(function (x) { x.list.forEach(function (y, i) { var r = y.r, id = str(r[1]); rows.push([LV.s + '/' + x.room.no, i + 1, id, str(r[2]), str(r[3]), str(r[4]), str(r[5]), str(r[6]), x.room.s, x.room.g, y.add ? 'สำรองลำดับที่ ' + y.add : '', dSch(M, id)]); }); });
-  csv('รายชื่อนักเรียน ' + LV.s + ' รายห้อง ปีการศึกษา ' + M.c.yr, ['ห้อง', 'เลขที่ในห้อง', 'เลขที่สมัคร', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'ประเภท F', 'ประเภท G', 'สายการเรียน', 'กลุ่มการเรียน', 'หมายเหตุ', 'โรงเรียนเดิม'], rows);
+  var rows = [], ids = (DS && DS.ids) || {};
+  dEnroll(M).forEach(function (x) { x.list.forEach(function (y, i) { var r = y.r, id = str(r[1]), st = M.f.E[id] ? 'มอบตัวแล้ว' : M.f.P[id] ? 'รายงานตัวแล้ว' : '', k = dIdOf(M, id);
+    rows.push([LV.s + '/' + x.room.no, i + 1, id, str(r[2]), str(r[3]), str(r[4]), str(r[5]), str(r[6]), x.room.s, x.room.g, y.mv ? 'ย้ายจาก ' + y.mv : y.add ? 'สำรองลำดับที่ ' + y.add : '', dSch(M, id), st, k.code || (k.st === 'new' ? 'ออกรหัสใหม่' : '')]); }); });
+  csv('รายชื่อนักเรียน ' + LV.s + ' รายห้อง ปีการศึกษา ' + M.c.yr, ['ห้อง', 'เลขที่ในห้อง', 'เลขที่สมัคร', 'คำนำหน้า', 'ชื่อ', 'นามสกุล'].concat(LV.csvTy, ['สายการเรียน', 'กลุ่มการเรียน', 'หมายเหตุ', 'โรงเรียนเดิม', 'สถานะ', 'รหัสนักเรียนเดิม']), rows);
 }
 
 /* ---------- หน้าจอขั้นที่ 4 ---------- */
@@ -1422,7 +1720,7 @@ function dStat(b, t, s) { return '<div class="stat"><b>' + b + '</b><span>' + t 
 function vDoc() {
   MOUNT = '';
   if (!DS && !DLOADING && !DERR) dload(true); else if (DS && !DLOADING && Date.now() - DLAST > 60000) dload(false);
-  var tabs = [['docs', 'เอกสาร / PDF'], ['wv', 'สละสิทธิ์ · เรียกสำรอง'], ['set', 'ตั้งค่าประกาศ']];
+  var tabs = [['docs', 'เอกสาร / PDF'], ['rep', 'รายงานตัว · มอบตัว'], ['wv', 'สละสิทธิ์ · เรียกสำรอง'], ['chg', 'เปลี่ยนแผนการเรียน'], ['id', 'รหัสนักเรียน'], ['set', 'ตั้งค่า']];
   var head = '<section class="card"><div class="row" style="justify-content:space-between"><h2>ขั้นที่ 4 · ประกาศผล</h2><div class="dtabs">' +
     tabs.map(function (x) { return '<button data-dx="tab" data-t="' + x[0] + '" aria-pressed="' + (DT === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div></div>';
   var ae = document.activeElement, fid = ae && ae.id, s0 = null, s1 = null;
@@ -1432,16 +1730,16 @@ function vDoc() {
   else if (!DS) h = head + (DERR ? '<div class="hint bad">' + esc(DERR) + '</div><div><button data-dx="reload">ลองอีกครั้ง</button></div>' : '<div class="row"><div class="spin"></div> กำลังโหลดข้อมูลประกาศ…</div>') + '</section>';
   else {
     var M = DM = dModel();
-    h = head + dTop(M) + '</section>' + (DT === 'wv' ? vWv(M) : DT === 'set' ? vDSet(M) : vDocs(M));
+    h = head + dTop(M) + '</section>' + ({ wv: vWv, set: vDSet, rep: vRep, chg: vChg, id: vIds }[DT] || vDocs)(M);
   }
   mount(h);
   if (fid && $(fid) && fid !== 'q1' && fid !== 'q2') { var el = $(fid); el.focus(); try { if (s0 != null) el.setSelectionRange(s0, s1); } catch (e) {} }
 }
 function dTop(M) {
   var c = M.c, rr = M.P.rooms, ex = (DS && DS.exInfo) || {};
-  var h = '<section class="stats">' + dStat(M.P.rank.length, 'ผ่านการคัดเลือก', 'ม.3 เดิม ' + M.m3 + ' · ทั่วไป ' + M.gen) + dStat(M.res.length, 'สำรอง') +
+  var h = '<section class="stats">' + dStat(M.P.rank.length, 'ผ่านการคัดเลือก', M.split.la + ' ' + M.split.a + ' · ' + M.split.lb + ' ' + M.split.b) + dStat(M.res.length, 'สำรอง') +
     dStat(rr.length, 'ห้องเรียน', rr.length ? LV.s + '/' + rr[0].no + ' – ' + LV.s + '/' + rr[rr.length - 1].no : '') +
-    dStat(M.seats, 'สละสิทธิ์', 'สำรองรับสิทธิ์ ' + M.nAcc + ' · ว่าง ' + Math.max(0, M.free)) + '</section>';
+    dStat(M.seatsAll, 'สละสิทธิ์', 'สำรองรับสิทธิ์ ' + M.nAcc + ' · ว่าง ' + Math.max(0, M.free)) + '</section>';
   if (M.pending.length) h += '<div class="hint bad">ยังจัดสายไม่ครบ <b>' + M.pending.length + '</b> คน — เอกสารที่มีห้องเรียนจะพร้อมเมื่อจัดครบที่ขั้นที่ 2</div>';
   if (M.missDate.length && DT !== 'set') h += '<div class="hint warn">ยังไม่ได้ตั้ง' + M.missDate.map(function (k) { return { dExam: 'วันสอบ', dAnn: 'วันประกาศ', dRep: 'วันรายงานตัว', dEnr: 'วันมอบตัว' }[k]; }).join(' ') + ' — ไปที่ <button data-dx="tab" data-t="set">ตั้งค่าประกาศ</button></div>';
   if (M.badYear.length) h += '<div class="hint bad">⚠ ' + M.badYear.map(function (k) { return { dExam: 'วันสอบ', dAnn: 'วันประกาศ', dRep: 'วันรายงานตัว', dEnr: 'วันมอบตัว' }[k] + ' (' + esc(dTh(c[k])) + ')'; }).join(', ') + ' ไม่ตรงกับปีการศึกษา ' + esc(c.yr) + ' — ตรวจที่ <button data-dx="tab" data-t="set">ตั้งค่าประกาศ</button></div>';
@@ -1452,33 +1750,41 @@ function dTop(M) {
   return h;
 }
 function vDocs(M) {
-  var bad = M.pending.length > 0, en = dEnroll(M), w = M.f.W;
+  var bad = M.pending.length > 0, en = dEnroll(M), f = M.f, w = f.W;
   var desc = {
     ann: 'หน้าประกาศพร้อมตราครุฑ · บัญชีแนบท้าย (1) ผู้ผ่าน ' + M.P.rank.length + ' คน เรียงตามคะแนน พร้อมห้องและกลุ่มการเรียน · บัญชีแนบท้าย (2) สำรอง ' + M.res.length + ' คน',
-    rep: 'แยกรายห้อง ' + M.P.rooms.length + ' ห้อง เรียงตามเลขที่สมัคร + ใบลงชื่อสำรอง',
-    enr: 'เรียงตามเลขที่สมัคร · ตัดผู้สละสิทธิ์ ' + M.seats + ' คน · เติมสำรองที่รับสิทธิ์ ' + M.nAcc + ' คน ต่อท้าย ' + LV.s + '/' + M.appendNo,
+    rep: 'แยกรายห้อง ' + M.P.rooms.length + ' ห้อง ' + LV.repDesc + ' + ใบลงชื่อสำรอง',
+    enr: 'เรียงตามเลขที่สมัคร · ตัดผู้สละสิทธิ์ ' + M.seatsAll + ' คน · เติมสำรองที่รับสิทธิ์ ' + M.nAcc + ' คน ต่อท้าย ' + LV.s + '/' + M.appendNo,
     board: 'สำรองทุกคนพร้อมผลการเรียก (รับสิทธิ์ / ไม่รับสิทธิ์ / ติดต่อไม่ได้) และหมายเหตุ',
     tel: M.tel ? 'สำรองเรียงตามลำดับเรียก + รายห้อง · เบอร์บิดา มารดา ผู้ปกครองหลัก · ใช้ภายในคณะกรรมการ' : 'ต้องมีแท็บ "ข้อมูลผู้สมัคร" ที่มีเบอร์โทรก่อน',
-    sum: 'ผู้สละสิทธิ์ · ผลเรียกสำรอง · ประวัติการบันทึกทุกรายการพร้อมวันเวลา (หลักฐาน)'
+    sum: 'ผู้สละสิทธิ์ (พร้อมขั้นตอนที่สละ) · ผลเรียกสำรอง · ประวัติการบันทึกทุกรายการพร้อมวันเวลา (หลักฐาน)'
   };
   var h = '<section class="card"><h2>เอกสาร (ดูตัวอย่าง แล้วพิมพ์ / บันทึกเป็น PDF)</h2><div class="docs">' + DOCS.map(function (d) {
-    var off = (d[3] && bad) || (d[0] === 'tel' && !M.tel);
-    return '<div class="doc"><b>' + d[1] + '</b><div class="muted">' + desc[d[0]] + '</div><div class="tools"><button class="pri" data-dx="prev" data-k="' + d[0] + '"' + (off ? ' disabled' : '') + '>ดูตัวอย่าง / PDF</button></div></div>';
-  }).join('') + '</div><div class="tools"><button data-dx="csv"' + (bad ? ' disabled' : '') + '>ดาวน์โหลดรายชื่อรายห้อง (CSV)</button><span class="muted">ตอนพิมพ์: ปลายทาง “บันทึกเป็น PDF” · กระดาษ A4 · ขอบ “ไม่มี” · ปิดส่วนหัวและท้ายกระดาษ</span></div></section>';
-  h += '<section class="card"><h2>ห้องเรียน</h2><table class="rooms"><tr><th>ห้อง</th><th>กลุ่มการเรียน</th><th>ประกาศ</th><th>สละสิทธิ์</th><th>สำรองเติม</th><th>มอบตัว</th></tr>' +
-    en.map(function (x) { var rm = x.room, nw = rm.mem.filter(function (r) { return w[str(r[1])]; }).length, add = x.list.filter(function (y) { return y.add; }).length;
-      return '<tr><td>' + LV.s + '/' + rm.no + '</td><td style="text-align:left">' + chip(rm.s) + ' ' + esc(rm.g) + '</td><td>' + rm.mem.length + '</td><td>' + (nw || '–') + '</td><td>' + (add || '–') + '</td><td><b>' + x.list.length + '</b></td></tr>'; }).join('') +
-    (function () { var sw = 0, sa = 0; en.forEach(function (x) { sw += x.room.mem.filter(function (r) { return w[str(r[1])]; }).length; sa += x.list.filter(function (y) { return y.add; }).length; });
+    var off = (d[3] && bad) || (d[0] === 'tel' && !M.tel) || (DOC_OFF[d[0]] && DOC_OFF[d[0]](M));
+    return '<div class="doc"><b>' + d[1] + '</b><div class="muted">' + (desc[d[0]] || (DOC_DESC[d[0]] ? DOC_DESC[d[0]](M) : '')) + '</div><div class="tools"><button class="pri" data-dx="prev" data-k="' + d[0] + '"' + (off ? ' disabled' : '') + '>ดูตัวอย่าง / PDF</button></div></div>';
+  }).join('') + '</div><div class="tools"><button data-dx="csv"' + (bad ? ' disabled' : '') + '>ดาวน์โหลดรายชื่อรายห้องปัจจุบัน (CSV)</button><span class="muted">ตอนพิมพ์: ปลายทาง “บันทึกเป็น PDF” · กระดาษ A4 · ขอบ “ไม่มี” · ปิดส่วนหัวและท้ายกระดาษ</span></div></section>';
+  var tot = { m: 0, w: 0, a: 0, i: 0, o: 0, n: 0, e: 0 };
+  h += '<section class="card"><h2>ห้องเรียน</h2><div style="overflow-x:auto"><table class="rooms"><tr><th>ห้อง</th><th>กลุ่มการเรียน</th><th>ประกาศ</th><th>สละสิทธิ์</th><th>สำรองเติม</th><th>ย้ายเข้า / ออก</th><th>ปัจจุบัน</th><th>มอบตัวแล้ว</th></tr>' +
+    en.map(function (x) {
+      var rm = x.room, nw = rm.mem.filter(function (r) { return w[str(r[1])]; }).length, add = x.list.filter(function (y) { return y.add && !y.mv; }).length;
+      var mi = x.list.filter(function (y) { return y.mv; }).length, mo = rm.mem.filter(function (r) { var id = str(r[1]); return !w[id] && M.R.of[id] && M.R.of[id].no !== rm.no; }).length;
+      var ne = x.list.filter(function (y) { return f.E[str(y.r[1])]; }).length;
+      tot.m += rm.mem.length; tot.w += nw; tot.a += add; tot.i += mi; tot.o += mo; tot.n += x.list.length; tot.e += ne;
+      return '<tr><td>' + LV.s + '/' + rm.no + '</td><td style="text-align:left">' + chip(rm.s) + ' ' + esc(rm.g) + '</td><td>' + rm.mem.length + '</td><td>' + (nw || '–') + '</td><td>' + (add || '–') + '</td><td>' + (mi || mo ? '+' + mi + ' / −' + mo : '–') + '</td><td><b>' + x.list.length + '</b></td><td>' + (ne || '–') + '</td></tr>';
+    }).join('') +
+    (function () {
       var late = M.acc.filter(function (r) { return w[str(r[1])]; }).length;
-      return '<tr><th>รวม</th><th style="text-align:left;font-weight:400">' + (late ? '<span class="muted">สำรองที่รับสิทธิ์แล้วสละสิทธิ์ภายหลัง ' + late + ' คน</span>' : '') + '</th><th>' + M.P.rank.length + '</th><th>' + (sw || '–') + '</th><th>' + (sa || '–') + '</th><th>' + en.reduce(function (a, x) { return a + x.list.length; }, 0) + '</th></tr></table>'; })() +
-    '<div class="muted">แบ่งห้องตามลำดับคะแนนในแต่ละสาย: ' + CFG.streams.map(function (s) { var rs = M.P.rooms.filter(function (r) { return r.s === s; }); return rs.length > 1 ? esc(s) + ' = ' + (rs[0].mode === 'top' ? (rs.length > 2 ? 'ห้องแรกคะแนนสูงสุด แล้วสลับ' : 'ห้องแรก ' + Math.min(M.c.rsz, rs[0].mem.length) + ' คนคะแนนสูงสุด') : 'สลับ ก-ข-ข-ก') : ''; }).filter(Boolean).join(' · ') + ' (เปลี่ยนได้ในตั้งค่าประกาศ)</div></section>';
+      return '<tr><th>รวม</th><th style="text-align:left;font-weight:400">' + (late ? '<span class="muted">สำรองที่รับสิทธิ์แล้วสละสิทธิ์ภายหลัง ' + late + ' คน</span>' : '') + '</th><th>' + tot.m + '</th><th>' + (tot.w || '–') + '</th><th>' + (tot.a || '–') + '</th><th>' + (tot.i ? '+' + tot.i + ' / −' + tot.o : '–') + '</th><th>' + tot.n + '</th><th>' + (tot.e || '–') + '</th></tr></table></div>';
+    })() +
+    '<div class="muted">แบ่งห้องตามลำดับคะแนนในแต่ละสาย: ' + CFG.streams.map(function (s) { var rs = M.P.rooms.filter(function (r) { return r.s === s; }); return rs.length > 1 ? esc(s) + ' = ' + (rs[0].mode === 'top' ? (rs.length > 2 ? 'ห้องแรกคะแนนสูงสุด แล้วสลับ' : 'ห้องแรก ' + Math.min(M.c.rsz, rs[0].mem.length) + ' คนคะแนนสูงสุด') : 'สลับ ก-ข-ข-ก') : ''; }).filter(Boolean).join(' · ') + ' (เปลี่ยนได้ในตั้งค่า) · คนที่เข้ามาภายหลัง (สำรอง/ย้ายสาย) ต่อท้ายห้อง ไม่แทรกกลางรายชื่อ</div></section>';
   return h;
 }
 function vWv(M) {
   var nx = M.next, h = '<section class="card"><h2>บันทึกสละสิทธิ์ และเรียกสำรอง</h2>' +
     '<div class="row"><label class="row" style="gap:6px">ผู้บันทึก <input id="dby" value="' + esc(DBY) + '" placeholder="ชื่อผู้บันทึก" style="width:12em"></label>' +
-    '<span class="muted">ทุกรายการลงแท็บ "บันทึกสละสิทธิ์" พร้อมวันเวลา · แก้รายการที่ผิดด้วยปุ่มยกเลิก (ประวัติเดิมยังอยู่)</span></div>';
+    '<span class="muted">ทุกรายการลงแท็บ "บันทึกหลังประกาศผล" พร้อมวันเวลา · แก้รายการที่ผิดด้วยปุ่มยกเลิก (ประวัติเดิมยังอยู่)</span></div>';
   if (!M.res.length) h += '<div class="hint">ไม่มีรายชื่อสำรอง</div>';
+  else if (M.cutPassed) h += '<div class="hint">ปิดรับสำรองแล้วตั้งแต่ ' + esc(dTh(M.c.dCut)) + ' — ผู้สละสิทธิ์หลังจากนี้จะไม่เรียกสำรองมาแทน (บันทึกสละสิทธิ์ได้ตามปกติ)</div>';
   else if (!nx) h += '<div class="hint">' + (M.free > 0 ? 'เรียกสำรองครบทุกคนแล้ว แต่ยังมีที่ว่าง ' + M.free + ' ที่' : 'เรียกสำรองครบทุกคนแล้ว') + '</div>';
   else {
     var id = str(nx[1]), k = M.resNo[id], tl = tels(M, id, true);
@@ -1488,7 +1794,7 @@ function vWv(M) {
       (M.free > 0 ? '<input id="dnote" value="' + esc(DNOTE) + '" placeholder="หมายเหตุ (ถ้ามี) เช่น ผู้ปกครองรับสาย 16.40 น." style="width:100%">' +
         '<div class="tools"><button class="pri" data-dx="ra" data-wid="' + esc(id) + '" data-in="dnote">✓ รับสิทธิ์ (เข้า ' + LV.s + '/' + M.appendNo + ')</button><button data-dx="rd" data-wid="' + esc(id) + '" data-in="dnote">✗ ไม่รับสิทธิ์</button><button data-dx="rn" data-wid="' + esc(id) + '" data-in="dnote">☎ ติดต่อไม่ได้ (ข้าม)</button></div>' : '') + '</div>';
   }
-  h += '</section><section class="card"><h2>ผู้สละสิทธิ์ <span class="muted">(' + M.seats + ' คน)</span></h2>' +
+  h += '</section><section class="card"><h2>ผู้สละสิทธิ์ <span class="muted">(' + M.seatsAll + ' คน)</span></h2>' +
     '<input id="dq" placeholder="ค้นหาชื่อ / เลขที่สมัคร เพื่อบันทึกสละสิทธิ์" value="' + esc(DQS) + '" style="width:100%">' +
     '<div class="list wl" id="dql">' + dWlist(M) + '</div></section>';
   h += '<section class="card"><h2>รายชื่อสำรอง <span class="muted">(' + M.res.length + ' คน · รับสิทธิ์ ' + M.nAcc + ')</span></h2><div style="overflow-x:auto"><table class="rtab"><tr><th>ลำดับ</th><th>เลขที่สมัคร</th><th>ชื่อ-สกุล</th><th>ผล</th><th class="hide-m">หมายเหตุ</th><th></th></tr>' +
@@ -1517,16 +1823,17 @@ function dWDialog(id) {
   var M = DM || dModel(), r = dRow(M, id), e = M.f.W[id], d = $('dlg'); if (!r) return;
   d.innerHTML = '<div class="dl"><div class="row" style="justify-content:space-between"><h3>' + nm(r) + '</h3><button data-x="1" aria-label="ปิด">✕</button></div>' +
     '<div class="muted">' + esc(id) + ' · ' + dTy(r) + ' · ' + esc(dWhere(M, id)) + (M.P.roomOf[id] ? ' ' + esc(M.P.roomOf[id].g) : '') + '</div>' +
-    (e ? '<div class="hint warn">บันทึกสละสิทธิ์แล้วเมื่อ ' + esc(beT(e[0])) + (e[1] ? ' โดย ' + esc(e[1]) : '') + (e[5] ? ' · ' + esc(e[5]) : '') + '</div>' +
+    (e ? '' : '<div class="muted">สถานะตอนนี้: <b>' + esc(LC.STG[LC.stage(M.f, M.base, id)]) + '</b></div>') +
+    (e ? '<div class="hint warn">บันทึกสละสิทธิ์แล้วเมื่อ ' + esc(beT(e[0])) + (e[1] ? ' โดย ' + esc(e[1]) : '') + (e[5] ? ' · ' + esc(e[5]) : '') + (e[7] ? ' · ' + esc(e[7]) : '') + '</div>' +
       '<div class="tools"><button class="danger" data-dx="uw" data-wid="' + esc(id) + '">ยกเลิกการสละสิทธิ์ (บันทึกผิด)</button><button data-x="1">ปิด</button></div>'
-      : '<div class="fgrid"><label>เหตุผล<select id="dwhy">' + WHY.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('') + '</select></label><label>หมายเหตุ<input id="dwn" placeholder="เช่น ผู้ปกครองโทรแจ้ง 10.30 น."></label></div>' +
+      : '<div class="fgrid"><label>เหตุผล<select id="dwhy">' + WHY.map(function (x) { return '<option' + (x === WHY_BY[LC.stage(M.f, M.base, id)] ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label><label>หมายเหตุ<input id="dwn" placeholder="เช่น ผู้ปกครองโทรแจ้ง 10.30 น."></label></div>' +
         '<div class="tools"><button data-dx="w" data-wid="' + esc(id) + '" style="background:var(--bad);border-color:var(--bad);color:#fff;font-weight:700">บันทึกสละสิทธิ์</button><button data-x="1">ยกเลิก</button></div>' +
         '<div class="muted">เมื่อบันทึกแล้ว ระบบจะชี้สำรองคนถัดไปให้โทรเรียก (หน้าสละสิทธิ์ · เรียกสำรอง)</div>') + '</div>';
   d.dataset.id = ''; d.showModal();
 }
 function dRDialog(id) {
   var M = DM || dModel(), r = M.resRow[id], d = $('dlg'); if (!r) return;
-  var isNext = M.next && str(M.next[1]) === id, canA = isNext && M.free > 0, tl = tels(M, id, true);
+  var isNext = M.next && str(M.next[1]) === id, canA = isNext && M.free > 0 && !M.cutPassed, tl = tels(M, id, true);
   d.innerHTML = '<div class="dl"><div class="row" style="justify-content:space-between"><h3>สำรองลำดับที่ ' + M.resNo[id] + ' · ' + nm(r) + '</h3><button data-x="1" aria-label="ปิด">✕</button></div>' +
     '<div class="muted">' + esc(id) + ' · ' + dTy(r) + (dSch(M, id) ? ' · ' + esc(dSch(M, id)) : '') + '</div>' + (tl ? '<div class="tel">' + tl + '</div>' : '') +
     '<label class="muted">หมายเหตุ<input id="drn" style="width:100%" placeholder="เช่น มอบตัวที่โรงเรียนอื่นแล้ว"></label>' +
@@ -1540,15 +1847,25 @@ function vDSet(M) {
     return '<label>' + lb + '<input id="dc-' + k + '" type="' + (type || 'text') + '" value="' + esc(c[k] == null ? '' : c[k]) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + (extra || '') + '></label>'; };
   var h = '<section class="card"><h2>ตั้งค่าประกาศ</h2><div class="fgrid">' +
     inp('yr', 'ปีการศึกษา (พ.ศ.)', 'number') + inp('dExam', 'วันสอบ', 'date') + inp('dAnn', 'วันประกาศ', 'date') + inp('dRep', 'วันรายงานตัว', 'date') + inp('dEnr', 'วันมอบตัว', 'date') +
-    inp('place', 'สถานที่รายงานตัว') + inp('tRep', 'เวลารายงานตัว') + inp('tCall', 'เริ่มเรียกสำรองเวลา') + inp('dir', 'ผู้ลงนามประกาศ') + inp('dirPos', 'ตำแหน่งผู้ลงนาม') + '</div>' +
-    '<h2 style="font-size:20px;margin-top:6px">ห้องเรียน</h2><div class="fgrid">' + inp('r0', 'ห้องปกติห้องแรก (' + LV.s + '/…)', 'number', '', ' min="1"') + inp('rsz', 'นักเรียนต่อห้อง', 'number', '', ' min="10"') +
+    inp('place', 'สถานที่รายงานตัว') + inp('tRep', 'เวลารายงานตัว') + inp('tCall', 'เริ่มเรียกสำรองเวลา') + inp('dir', 'ผู้ลงนามประกาศ') + inp('dirPos', 'ตำแหน่งผู้ลงนาม') +
+    inp('dCut', 'วันปิดรับสำรอง (วันสุดท้ายที่เรียกสำรอง)', 'date') + '</div>' +
+    '<div class="muted">หลังวันปิดรับสำรอง: ผู้สละสิทธิ์จะไม่ถูกเรียกสำรองมาแทน (ถือเป็นการลาออก/ย้าย) · ว่างไว้ = เรียกสำรองได้เรื่อย ๆ</div>' +
+    '<h2 style="font-size:20px;margin-top:6px">ห้องเรียน</h2>' + (c.plan && c.plan.n ? '<div class="hint">🔒 แบ่งห้องตามประกาศแล้ว (ล็อกเมื่อเริ่มบันทึกรายการหลังประกาศ ' + esc(c.plan.at || '') + ') — เลขห้องจะไม่เลื่อนแม้แก้โควต้าภายหลัง · ห้องแรก คนต่อห้อง และวิธีแบ่งแก้ไม่ได้ ' +
+      '<button data-dx="unplan">ปลดล็อกเพื่อแก้</button></div>' : '') + '<div class="fgrid">' + inp('r0', 'ห้องปกติห้องแรก (' + LV.s + '/…)', 'number', '', ' min="1"' + (c.plan && c.plan.n ? ' disabled' : '')) + inp('rsz', 'นักเรียนต่อห้อง', 'number', '', ' min="10"' + (c.plan && c.plan.n ? ' disabled' : '')) +
     '<label>สำรองที่รับสิทธิ์ เติมต่อท้ายห้อง<select id="dc-rapp"><option value="0">ห้องสุดท้าย (' + LV.s + '/' + (P.rooms.length ? P.rooms[P.rooms.length - 1].no : '') + ')</option>' + P.rooms.map(function (r) { return '<option value="' + r.no + '"' + (c.rapp === r.no ? ' selected' : '') + '>' + LV.s + '/' + r.no + '</option>'; }).join('') + '</select></label>' +
     '<label>เว้นที่ลงนามกำกับท้ายหน้าบัญชี<select id="dc-sig"><option value="1"' + (c.sig ? ' selected' : '') + '>เว้นไว้</option><option value="0"' + (c.sig ? '' : ' selected') + '>ไม่เว้น</option></select></label></div>' +
     '<table class="rooms"><tr><th>สาย</th><th>ห้อง</th><th style="text-align:left">ชื่อกลุ่มการเรียนในเอกสาร</th><th>วิธีแบ่งห้อง</th></tr>' + CFG.streams.map(function (s) {
       var rs = P.rooms.filter(function (r) { return r.s === s; }); if (!rs.length) return '';
       return '<tr><td>' + chip(s) + '</td><td>' + (rs.length > 1 ? LV.s + '/' + rs[0].no + '–' + rs[rs.length - 1].no : LV.s + '/' + rs[0].no) + '</td><td><input data-dg="' + esc(s) + '" value="' + esc(dGroup(c, s)) + '" style="width:100%"></td><td>' +
-        (rs.length > 1 ? '<select data-dm="' + esc(s) + '"><option value="snake"' + (rs[0].mode === 'snake' ? ' selected' : '') + '>สลับ ก-ข-ข-ก ตามคะแนน</option><option value="top"' + (rs[0].mode === 'top' ? ' selected' : '') + '>ห้องแรกคะแนนสูงสุด แล้วสลับ</option></select>' : '–') + '</td></tr>';
+        (rs.length > 1 ? '<select data-dm="' + esc(s) + '"' + (c.plan && c.plan.n ? ' disabled' : '') + '><option value="snake"' + (rs[0].mode === 'snake' ? ' selected' : '') + '>สลับ ก-ข-ข-ก ตามคะแนน</option><option value="top"' + (rs[0].mode === 'top' ? ' selected' : '') + '>ห้องแรกคะแนนสูงสุด แล้วสลับ</option></select>' : '–') + '</td></tr>';
     }).join('') + '</table>' +
+    '<h2 style="font-size:20px;margin-top:10px">คำร้องขอเปลี่ยนแผนการเรียน</h2><div class="fgrid">' + inp('cFrom', 'เริ่มรับคำร้อง', 'date') + inp('cTo', 'วันสุดท้ายที่รับคำร้อง', 'date') +
+    '<label>ลำดับการพิจารณาในสายเดียวกัน<select id="dc-cOrder"><option value="score"' + (c.cOrder !== 'time' ? ' selected' : '') + '>คะแนนสอบสูงกว่าได้ก่อน</option><option value="time"' + (c.cOrder === 'time' ? ' selected' : '') + '>ยื่นก่อนได้ก่อน</option></select></label>' +
+    '<label>จำนวนครั้งที่ยื่นได้<select id="dc-cOnce"><option value="1"' + (c.cOnce ? ' selected' : '') + '>คนละ 1 ครั้ง</option><option value="0"' + (c.cOnce ? '' : ' selected') + '>ไม่จำกัด</option></select></label>' +
+    (LV.m4 ? '<label>นักเรียน ม.3 เดิม<select id="dc-cM3"><option value="0"' + (c.cM3 ? '' : ' selected') + '>ไม่มีสิทธิ์พิเศษ</option><option value="1"' + (c.cM3 ? ' selected' : '') + '>ได้พิจารณาก่อน</option></select></label>' : '') + '</div>' +
+    '<div class="muted">ระบบอนุมัติให้เฉพาะเมื่อสายปลายทางมีที่ว่าง และต้องพิจารณาตามลำดับ (สลับสาย 2 คนอนุมัติพร้อมกันได้โดยไม่ต้องมีที่ว่าง) · ว่างช่วงวันไว้ = รับคำร้องได้ตลอด</div>' +
+    '<table class="rooms"><tr><th>สาย</th><th style="text-align:left">เงื่อนไขเพิ่มเติมของสาย (แสดงในแบบคำร้องและตอนพิจารณา · ไม่บังคับ)</th></tr>' + CFG.streams.map(function (s) {
+      return '<tr><td>' + chip(s) + '</td><td><input data-dk="' + esc(s) + '" value="' + esc((c.cond || {})[s] || '') + '" placeholder="เช่น ผลการเรียนคณิต-วิทย์ ม.3 ไม่ต่ำกว่า 3.00" style="width:100%"></td></tr>'; }).join('') + '</table>' +
     '<div class="tools"><button class="pri" data-dx="save"' + (DDRAFT ? '' : ' disabled') + '>บันทึกค่าตั้ง</button><button data-dx="discard"' + (DDRAFT ? '' : ' disabled') + '>คืนค่าเดิม</button><span class="muted" id="dsv">' + (DDRAFT ? '⚠ ยังไม่บันทึก' : 'บันทึกแล้ว · ใช้ร่วมกันทุกเครื่อง') + '</span></div></section>';
   h += '<section class="card"><h2>ข้อมูลผู้สมัคร (โรงเรียนเดิม · เบอร์โทร)</h2><div class="fgrid">' + inp('exTab', 'ชื่อแท็บในชีต') + '</div>' +
     '<div class="muted">สร้างแท็บชื่อนี้ในชีตจัดสาย ' + LV.s + ' แล้ววางข้อมูลจากระบบรับสมัคร (หัวตารางต้องมีคำว่า “เลขที่สมัคร” และคอลัมน์ “โรงเรียนเดิม”, “เบอร์โทรบิดา”, “เบอร์โทรมารดา”, “เบอร์โทรผู้ปกครอง” — ชื่อหัวไม่ต้องตรงทุกตัว ระบบหาเองจากคำสำคัญ) ' +
@@ -1560,12 +1877,15 @@ function dDraft() { if (!DDRAFT) { var c = dcfg(); DDRAFT = JSON.parse(JSON.stri
 function dSaveCfg() {
   if (!DDRAFT) return;
   var c = DDRAFT, o = {};
-  ['yr', 'dExam', 'dAnn', 'dRep', 'dEnr', 'place', 'tRep', 'tCall', 'dir', 'dirPos', 'exTab'].forEach(function (k) { o[k] = str(c[k]); });
-  ['r0', 'rsz', 'rapp', 'sig'].forEach(function (k) { o[k] = parseInt(c[k], 10) || 0; });
+  ['yr', 'dExam', 'dAnn', 'dRep', 'dEnr', 'place', 'tRep', 'tCall', 'dir', 'dirPos', 'exTab', 'dCut', 'cFrom', 'cTo', 'cOrder'].forEach(function (k) { o[k] = str(c[k]); });
+  ['r0', 'rsz', 'rapp', 'sig', 'cOnce', 'cM3'].forEach(function (k) { o[k] = parseInt(c[k], 10) || 0; });
+  if (o.cFrom && o.cTo && o.cFrom > o.cTo) { toast('ช่วงรับคำร้อง: วันเริ่มต้องไม่หลังวันสุดท้าย', true); return; }
+  o.cond = {}; Object.keys(c.cond || {}).forEach(function (s) { if (str(c.cond[s])) o.cond[s] = str(c.cond[s]); });
   if (o.yr === dYear()) o.yr = ''; // ใช้ปีจากเลขที่สมัครอัตโนมัติ
   if (!(o.r0 > 0)) { toast('ห้องแรกต้องเป็นตัวเลขมากกว่า 0', true); return; }
   if (!(o.rsz >= 10)) { toast('จำนวนนักเรียนต่อห้องต้องอย่างน้อย 10', true); return; }
   o.modes = c.modes || {}; o.groups = {};
+  if (DS.cfg && DS.cfg.plan) o.plan = DS.cfg.plan; // แผนห้องที่ล็อกไว้คงเดิม
   Object.keys(c.groups || {}).forEach(function (s) { if (str(c.groups[s]) && str(c.groups[s]) !== GROUP_DEF[s]) o.groups[s] = str(c.groups[s]); });
   if (dact('docCfg', { cfg: o }, 'บันทึกค่าตั้งประกาศ')) { DDRAFT = null; render(); }
 }
@@ -1577,7 +1897,7 @@ document.addEventListener('click', function (ev) {
   switch (x) {
     case 'tab': DT = t.dataset.t; SS.set('dt', DT); render(); scrollTo(0, 0); return;
     case 'reload': DERR = ''; DLAST = 0; dload(true); render(); return;
-    case 'prev': dPrev(t.dataset.k); return;
+    case 'prev': dPrev(t.dataset.k, t.dataset.arg); return;
     case 'print': dPrint(); return;
     case 'pclose': dClose(); return;
     case 'csv': dcsv(DM || dModel()); return;
@@ -1597,14 +1917,20 @@ document.addEventListener('click', function (ev) {
     }
     case 'ru': if (confirm('ยกเลิกผลการเรียกสำรองของ ' + dName(id) + ' ?')) dEv('RU', id, ''); return;
     case 'save': dSaveCfg(); return;
+    case 'unplan': {
+      if (!confirm('ปลดล็อกการแบ่งห้อง?\n\nใช้เมื่อแบ่งห้องผิดจริง ๆ เท่านั้น — ถ้าแก้ห้องแรก/คนต่อห้อง/วิธีแบ่ง เลขห้องของนักเรียนอาจไม่ตรงกับประกาศที่พิมพ์ไปแล้ว\nระบบจะล็อกใหม่ตามค่าที่แก้เมื่อบันทึกรายการถัดไป')) return;
+      var o2 = JSON.parse(JSON.stringify((DS && DS.cfg) || {})); o2.plan = null; DDRAFT = null;
+      dact('docCfg', { cfg: o2 }, 'ปลดล็อกการแบ่งห้อง'); return;
+    }
     case 'discard': DDRAFT = null; render(); return;
   }
 });
 function dDraftInput(t) {
-  if (!((t.id && t.id.indexOf('dc-') === 0) || t.dataset.dg || t.dataset.dm)) return false; // เฉพาะช่องในหน้าตั้งค่าประกาศ
+  if (!((t.id && t.id.indexOf('dc-') === 0) || t.dataset.dg || t.dataset.dm || t.dataset.dk)) return false; // เฉพาะช่องในหน้าตั้งค่า
   var c = dDraft();
   if (t.id && t.id.indexOf('dc-') === 0) c[t.id.slice(3)] = t.value;
   else if (t.dataset.dg) c.groups[t.dataset.dg] = t.value;
+  else if (t.dataset.dk) { c.cond = c.cond || {}; c.cond[t.dataset.dk] = t.value; }
   else c.modes[t.dataset.dm] = t.value;
   var sv = $('dsv'); if (sv) sv.textContent = '⚠ ยังไม่บันทึก';
   document.querySelectorAll('[data-dx="save"],[data-dx="discard"]').forEach(function (b) { b.disabled = false; });
@@ -1641,21 +1967,26 @@ function impSummary(P) {
   var other = Object.keys(P.otherTypes || {}).map(function (k) { return k + ' ' + P.otherTypes[k]; }).join(' · ');
   var h = '<div class="muted">แหล่งข้อมูล: <b>' + esc(P.srcName) + '</b>' + (P.year ? ' · ปีการศึกษา ' + esc(P.year) : '') + ' · ส่งต่อเฉพาะประเภท <b>' + esc((P.send || []).join(', ')) + '</b>' + (other ? ' (ไม่รวม ' + esc(other) + ')' : '') + '</div>';
   h += '<section class="stats">' +
-    '<div class="stat ok"><b>' + P.n + '</b><span>นำเข้าได้<br>ม.3 เดิม ' + P.m3 + ' · ทั่วไป ' + P.gen + (P.special ? ' · ความสามารถพิเศษ ' + P.special : '') + '</span></div>' +
+    '<div class="stat ok"><b>' + P.n + '</b><span>นำเข้าได้<br>' + (LV.m4 ? 'ม.3 เดิม ' + P.m3 + ' · ทั่วไป ' + P.gen : 'ในเขต ' + P.zi + ' · นอกเขต ' + P.zo) + (P.special ? ' · ความสามารถพิเศษ ' + P.special : '') + '</span></div>' +
     '<div class="stat' + (P.absent.length ? ' warn' : '') + '"><b>' + P.absent.length + '</b><span>ขาดสอบ (ไม่นำเข้า)</span></div>' +
+    (P.nCancel ? '<div class="stat"><b>' + P.nCancel + '</b><span>สถานะยกเลิก /<br>ไม่มีสิทธิ์สอบ (ไม่นำเข้า)</span></div>' : '') +
     '<div class="stat"><b>' + (P.stats.n ? P.stats.mean : '–') + '</b><span>คะแนนรวมเฉลี่ย<br>SD ' + P.stats.sd + ' · ต่ำสุด ' + P.stats.min + ' · สูงสุด ' + P.stats.max + '</span></div>' +
-    (P.noPref ? '<div class="stat' + (P.noPrefM3 > Math.max(20, P.m3 / 5) ? ' warn' : '') + '"><b>' + P.noPref + '</b><span>ไม่มีอันดับกลุ่มการเรียน' + (P.noPrefM3 ? ' (ม.3 เดิม ' + P.noPrefM3 + ')' : '') + '<br>= โรงเรียนจัดให้ตอนจัดสาย</span></div>' : '') + '</section>';
-  if (P.noPrefM3 > Math.max(20, P.m3 / 5)) h += '<div class="hint warn">ม.3 เดิมไม่มีอันดับกลุ่มการเรียน <b>' + P.noPrefM3 + '</b> จาก ' + P.m3 + ' คน — ถ้ายังไม่ได้ใส่อันดับจากระบบโควตา ม.3 เดิม ลงแท็บฐานข้อมูลของชีตระบบสอบคัดเลือก ให้ใส่ก่อนนำเข้า (คนที่ไม่มีอันดับ ระบบจัดสายจะไม่จัดให้อัตโนมัติ ครูต้องเลือกสายเองทีละคน)</div>';
+    (LV.m4 && P.noPref ? '<div class="stat' + (P.noPrefM3 > Math.max(20, P.m3 / 5) ? ' warn' : '') + '"><b>' + P.noPref + '</b><span>ไม่มีอันดับกลุ่มการเรียน' + (P.noPrefM3 ? ' (ม.3 เดิม ' + P.noPrefM3 + ')' : '') + '<br>= โรงเรียนจัดให้ตอนจัดสาย</span></div>' : '') +
+    (!LV.m4 && P.zoneMap ? '<div class="stat"><b>' + P.zoneMap + '</b><span>เขต "ต่างจังหวัด"<br>นับเป็นนอกเขต</span></div>' : '') + '</section>';
+  if (LV.m4 && P.noPrefM3 > Math.max(20, P.m3 / 5)) h += '<div class="hint warn">ม.3 เดิมไม่มีอันดับกลุ่มการเรียน <b>' + P.noPrefM3 + '</b> จาก ' + P.m3 + ' คน — ถ้ายังไม่ได้ดึงรายชื่อโควตา ให้เปิดชีตระบบสอบ ม.4 → เมนู ระบบสอบคัดเลือก → <b>②ข ดึงรายชื่อโควตา ม.3 เดิม</b> แล้วกดตรวจที่นี่อีกครั้ง (คนที่ไม่มีอันดับ ระบบจะไม่จัดสายให้อัตโนมัติ ครูต้องเลือกสายเอง)</div>';
+  h += '<div class="muted">มีเลขประจำตัวประชาชน ' + (P.nid || 0) + ' จาก ' + P.n + ' คน (ใช้จับคู่รหัสนักเรียนเดิมในขั้นที่ 4 → รหัสนักเรียน · ไม่แสดงบนเว็บ)</div>';
   if (P.block.length) {
     h += '<div class="hint bad"><b>ยังนำเข้าไม่ได้ — แก้ในชีตระบบสอบคัดเลือกแล้วกดตรวจอีกครั้ง</b><br>' + P.block.map(esc).join('<br>') + '</div>';
     h += impList('ยังไม่มีคะแนน (' + P.nMissing + ' คน)', P.missing, true) + impList('คะแนนไม่ครบ / ไม่ใช่ตัวเลข', P.badScore, true) + impList('คะแนนซ้ำ (เลขที่)', P.dupScore, true) +
-      impList('เลขที่สมัครซ้ำในฐานข้อมูล', P.dupId, true) + impList('ประเภทย่อยว่างหรืออ่านไม่ออก', P.badType, true) + impList('กลุ่มการเรียนไม่ตรงกับสายในระบบ', P.badPref, true);
+      impList('เลขที่สมัครซ้ำในฐานข้อมูล', P.dupId, true) + impList('เขตอ่านไม่ออก', P.badZone, true) + impList(LV.m4 ? 'ประเภทย่อยว่างหรืออ่านไม่ออก' : 'ประเภทย่อยอ่านไม่ออก', P.badType, true) + impList('กลุ่มการเรียนไม่ตรงกับสายในระบบ', P.badPref, true);
   }
   h += impList('รายชื่อผู้ขาดสอบที่ไม่นำเข้า (' + P.absent.length + ' คน)', P.absent);
+  h += impList('สถานะยกเลิก / ไม่มีสิทธิ์สอบ ที่ไม่นำเข้า (' + (P.nCancel || 0) + ' คน)', P.cancel);
   if (P.absentNotInDb && P.absentNotInDb.length) h += '<div class="hint warn">แท็บขาดสอบมีเลขที่ที่ไม่อยู่ในฐานข้อมูล: ' + P.absentNotInDb.map(esc).join(', ') + ' — ตรวจว่าพิมพ์ถูกหรือไม่</div>';
   if (P.extraScore) h += '<div class="muted">แท็บคะแนนมีเลขที่ที่ไม่อยู่ในรายชื่อนี้ ' + P.extraScore + ' รายการ (ไม่ใช้)</div>';
   if (P.cur && P.cur.n) h += '<div class="hint warn">แท็บคัดเลือกผู้เข้าสอบตอนนี้มี ' + P.cur.n + ' คน' + (P.cur.picked ? ' (คัดเลือกแล้ว)' : '') + ' — นำเข้าแล้วจะแทนที่ทั้งหมด โดยเก็บของเดิมไว้ที่แท็บ "คัดเลือกผู้เข้าสอบ (ก่อนนำเข้า)"' +
     (P.cur.main ? '<br>รายชื่อหลักในขั้นที่ 2 (' + P.cur.main + ' คน) ยังไม่เปลี่ยน จนกว่าจะกด "ส่งตัวจริงไปจัดสาย" ใหม่' : '') + '</div>';
+  if (P.cur && P.cur.ev) h += '<div class="hint bad"><b>⚠ ประกาศผลไปแล้ว</b> — มีบันทึกหลังประกาศผล (สละสิทธิ์/เรียกสำรอง/รายงานตัว ฯลฯ) ' + P.cur.ev + ' รายการ ถ้านำเข้าใหม่แล้วคัดเลือก-จัดสายใหม่ รายชื่อและห้องจะเปลี่ยนจากที่ประกาศ · ทำเฉพาะเมื่อแน่ใจจริง ๆ</div>';
   h += '<div class="tools"><button class="pri" data-ix="apply"' + (P.block.length || IMP.busy ? ' disabled' : '') + '>นำเข้า ' + P.n + ' คน</button><span class="muted">หลังนำเข้า กด "เรียงคะแนนและคัดเลือก" ด้านล่างตามปกติ</span></div>';
   return h;
 }
@@ -1663,7 +1994,7 @@ function impRender() {
   var e = $('impc'); if (!e) return;
   var P = IMP.prev, fid = document.activeElement && document.activeElement.id;
   var h = '<section class="card"><div class="row" style="justify-content:space-between"><h2>นำเข้าจากระบบสอบคัดเลือก</h2>' + (P || IMP.err ? '<button data-ix="close">ซ่อน</button>' : '') + '</div>' +
-    '<div class="muted">ดึงผู้สมัครประเภทที่ตั้ง "ส่งต่อระบบจัดสาย" พร้อมคะแนน S1–S5 · ไม่รวมผู้ขาดสอบ · โรงเรียนเดิมและเบอร์โทรไปใช้ในขั้นที่ 4 ประกาศผล</div>' +
+    '<div class="muted">ดึงผู้สมัครประเภทที่ตั้ง "ส่งต่อระบบจัดสาย" พร้อมคะแนน S1–S5 · ไม่รวมผู้ขาดสอบและสถานะยกเลิก · โรงเรียนเดิม เบอร์โทร และเลขประจำตัวประชาชนไปใช้ในขั้นที่ 4</div>' +
     '<div class="row"><input id="isrc" value="' + esc(IMP.src) + '" placeholder="ลิงก์ชีตระบบสอบคัดเลือก (เว้นว่าง = ใช้ชีตที่ตั้งไว้)" style="flex:1;min-width:220px">' +
     '<button class="pri" data-ix="prev"' + (IMP.busy ? ' disabled' : '') + '>ตรวจข้อมูลก่อนนำเข้า</button></div>';
   if (IMP.busy) h += '<div class="row"><div class="spin"></div> ' + esc(IMP.busy) + '</div>';
@@ -1686,12 +2017,12 @@ function impPrev() {
 function impApply() {
   var P = IMP.prev; if (!P || P.block.length || IMP.busy) return;
   if (Q.length || DQ.length) { toast('รอให้บันทึกรายการก่อนหน้าเสร็จก่อน แล้วค่อยนำเข้า', true); return; }
-  if (!confirm('นำเข้าผู้สมัคร ' + P.n + ' คน จาก "' + P.srcName + '" ?\n\n' + (P.cur && P.cur.n ? '• แทนที่รายชื่อเดิมในแท็บคัดเลือกผู้เข้าสอบ ' + P.cur.n + ' คน (มีสำรองเก็บไว้)\n' : '') +
-    '• เขียนแท็บข้อมูลผู้สมัคร (โรงเรียนเดิม · เบอร์โทร) ใหม่ — ของเดิมสำรองไว้ที่แท็บ "ข้อมูลผู้สมัคร (ก่อนนำเข้า)"\n• ไม่รวมผู้ขาดสอบ ' + P.absent.length + ' คน\n• จากนั้นกด "เรียงคะแนนและคัดเลือก" ตามปกติ')) return;
+  if (!confirm((P.cur && P.cur.ev ? '⚠ ประกาศผลไปแล้ว (มีบันทึกหลังประกาศ ' + P.cur.ev + ' รายการ)\n\n' : '') + 'นำเข้าผู้สมัคร ' + P.n + ' คน จาก "' + P.srcName + '" ?\n\n' + (P.cur && P.cur.n ? '• แทนที่รายชื่อเดิมในแท็บคัดเลือกผู้เข้าสอบ ' + P.cur.n + ' คน (มีสำรองเก็บไว้)\n' : '') +
+    '• เขียนแท็บข้อมูลผู้สมัคร (โรงเรียนเดิม · เบอร์โทร · เลขประจำตัวประชาชน) ใหม่ — ของเดิมสำรองไว้ที่แท็บ "ข้อมูลผู้สมัคร (ก่อนนำเข้า)"\n• ไม่รวมผู้ขาดสอบ ' + P.absent.length + ' คน' + (P.nCancel ? ' และสถานะยกเลิก/ไม่มีสิทธิ์สอบ ' + P.nCancel + ' คน' : '') + '\n• จากนั้นกด "เรียงคะแนนและคัดเลือก" ตามปกติ')) return;
   IMP.busy = 'กำลังนำเข้า…'; IMP.err = ''; impRender();
   send({ a: 'docImp', token: TOKEN, rid: rid(), p: { src: P.src, n: P.n, by: DBY } }).then(function (r) {
     IMP.busy = '';
-    if (r && r.ok) { IMP.prev = null; toast('✓ ' + r.msg); DLAST = 0; F1.st = 'all'; F1.g = 'all'; reload(); }
+    if (r && r.ok) { IMP.prev = null; toast('✓ ' + r.msg); DLAST = 0; F1.st = 'all'; if ('g' in F1) F1.g = 'all'; if ('z' in F1) F1.z = 'all'; reload(); }
     else if (r && r.code === 'AUTH') { PAUSED = true; showLogin('หมดเวลาเข้าสู่ระบบ กรุณาใส่รหัสผ่านอีกครั้ง'); return; }
     else IMP.err = r && r.code === 'BUSY' ? 'ระบบกำลังบันทึกงานอื่นอยู่ — รอสักครู่แล้วกดนำเข้าอีกครั้ง' : dErr(r);
     impRender();
@@ -1706,7 +2037,459 @@ document.addEventListener('click', function (ev) {
 });
 document.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target && ev.target.id === 'isrc') { ev.preventDefault(); impPrev(); } });
 
-window.__m4 = { q: function () { return Q.length; }, off: function () { return OFF; }, paused: function () { return PAUSED; }, state: function () { return D; }, cfg: function () { return CFG; }, dq: function () { return DQ.length; }, doc: function () { return DS; }, model: function () { return dModel(); } }; // สำหรับตรวจสอบระบบ
+/* ===================== 4ข) รายงานตัว · มอบตัว · คำร้องเปลี่ยนแผนการเรียน (หน้าเว็บ) ===================== */
+var RMODE = SS.get('rmode') || 'P', RQS = '', RROOM = SS.get('rroom') || 'all', CQS = '', CSEL = '', CTO = '', CNOTE = '', CDT = '';
+
+/* ---------- ช่วยคำนวณ ---------- */
+function dActive(M) { // ทุกคนที่ยังมีที่นั่ง (ตัวจริงที่ไม่สละสิทธิ์ + สำรองที่รับสิทธิ์) ตามห้องปัจจุบัน
+  var o = [];
+  M.R.rooms.forEach(function (x) { x.list.forEach(function (y) { o.push({ id: y.id, r: y.r, no: x.room.no, k: y.no, add: y.add, mv: y.mv }); }); });
+  return o;
+}
+function dDone(M, id) { return RMODE === 'E' ? M.f.E[id] : M.f.P[id]; }
+function hm(e) { var m = /(\d{1,2}:\d{2})/.exec(e ? e[0] : ''); return m ? m[1] : ''; }
+function dReqNo() { var o = {}, n = 0; ((DS && DS.ev) || []).forEach(function (e) { if (e[2] === 'CQ') o[e[3] + '|' + e[10] + '|' + e[0]] = ++n; }); return o; }
+function reqNoOf(map, e) { return e ? map[e[3] + '|' + e[10] + '|' + e[0]] || '' : ''; }
+function dGName(M, s) { return dGroup(M.c, s); }
+
+/* ---------- หน้าจอ: รายงานตัว · มอบตัว ---------- */
+function vRep(M) {
+  var all = dActive(M), f = M.f, isE = RMODE === 'E', lbl = isE ? 'มอบตัว' : 'รายงานตัว';
+  var done = all.filter(function (x) { return dDone(M, x.id); }), left = all.filter(function (x) { return !dDone(M, x.id); });
+  var h = '<section class="card"><div class="row" style="justify-content:space-between"><h2>บันทึก' + lbl + '</h2><div class="dtabs">' +
+    '<button data-lx="mode" data-m="P" aria-pressed="' + !isE + '">วันรายงานตัว ' + (M.c.dRep ? '<small>' + esc(dTh(M.c.dRep)) + '</small>' : '') + '</button>' +
+    '<button data-lx="mode" data-m="E" aria-pressed="' + isE + '">วันมอบตัว ' + (M.c.dEnr ? '<small>' + esc(dTh(M.c.dEnr)) + '</small>' : '') + '</button></div></div>' +
+    '<section class="stats">' + dStat(all.length, 'ต้องมา' + lbl, 'ตัวจริง + สำรองที่รับสิทธิ์') + dStat(done.length, lbl + 'แล้ว') + dStat(left.length, 'ยังไม่มา') + dStat(M.seatsAll, 'สละสิทธิ์ทั้งหมด') + '</section>' +
+    '<div class="row"><label class="row" style="gap:6px">ผู้บันทึก <input id="dby" value="' + esc(DBY) + '" placeholder="ชื่อผู้บันทึก" style="width:12em"></label>' +
+    '<span class="muted">วิธีที่เร็วที่สุด: บันทึกคนที่<b>ไม่มา</b>เป็นสละสิทธิ์ก่อน แล้วกดปุ่ม "บันทึกว่าคนที่เหลือมา' + lbl + 'แล้ว" ทีเดียว</span></div>' +
+    '<input id="rq" placeholder="ค้นหาชื่อ / เลขที่สมัคร เพื่อบันทึกทีละคน" value="' + esc(RQS) + '" style="width:100%">' +
+    '<div class="list ll" id="rql">' + dRepFind(M, all) + '</div></section>';
+  var chips = '<div class="dtabs" style="flex-wrap:wrap"><button data-lx="room" data-r="all" aria-pressed="' + (RROOM === 'all') + '">ทุกห้อง</button>' +
+    M.R.rooms.map(function (x) { var n = x.list.filter(function (y) { return !dDone(M, y.id); }).length;
+      return '<button data-lx="room" data-r="' + x.room.no + '" aria-pressed="' + (String(RROOM) === String(x.room.no)) + '">' + LV.s + '/' + x.room.no + (n ? ' <small class="bad-t">' + n + '</small>' : ' ✓') + '</button>'; }).join('') + '</div>';
+  var pool = RROOM === 'all' ? all : all.filter(function (x) { return String(x.no) === String(RROOM); }), rest = pool.filter(function (x) { return !dDone(M, x.id); });
+  h += '<section class="card"><h2>ยังไม่มา' + lbl + ' <span class="muted">(' + rest.length + ' คน' + (RROOM === 'all' ? '' : ' · ' + LV.s + '/' + RROOM) + ')</span></h2>' + chips +
+    (rest.length ? '<div class="tools"><button class="pri" data-lx="bulk">✓ บันทึกว่าคนที่เหลือ' + (RROOM === 'all' ? 'ทั้งหมด' : 'ในห้องนี้') + 'มา' + lbl + 'แล้ว (' + rest.length + ' คน)</button>' +
+      '<span class="muted">ใช้หลังบันทึกคนที่ไม่มาเป็นสละสิทธิ์ครบแล้ว</span></div>' : '<div class="hint">ทุกคน' + (RROOM === 'all' ? '' : 'ในห้องนี้') + 'มา' + lbl + 'แล้ว</div>') +
+    '<div class="list ll">' + rest.slice(0, 120).map(function (x) { return dRepItem(M, x); }).join('') + (rest.length > 120 ? '<div class="muted">… อีก ' + (rest.length - 120) + ' คน (เลือกห้องเพื่อดูทั้งหมด)</div>' : '') + '</div></section>';
+  var recent = done.slice().sort(function (a, b) { return (+dDone(M, b.id)[10] || 0) - (+dDone(M, a.id)[10] || 0); }).slice(0, 20);
+  if (recent.length) h += '<section class="card"><h2>' + lbl + 'แล้วล่าสุด <span class="muted">(' + done.length + ' คน)</span></h2><div class="list ll">' + recent.map(function (x) { return dRepItem(M, x); }).join('') + '</div></section>';
+  return h;
+}
+function dRepFind(M, all) {
+  if (!RQS) return '<div class="empty">พิมพ์ชื่อหรือเลขที่สมัครเพื่อค้นหา</div>';
+  var hit = all.filter(function (x) { return match(x.r, RQS); }).slice(0, 30);
+  var gone = Object.keys(M.f.W).filter(function (id) { var r = dRow(M, id); return r && match(r, RQS); }).slice(0, 10);
+  return (hit.length ? hit.map(function (x) { return dRepItem(M, x); }).join('') : '') +
+    gone.map(function (id) { var r = dRow(M, id); return '<button class="it" data-dx="wopen" data-wid="' + esc(id) + '"><span class="no">–</span><span class="nm"><b>' + nm(r) + '</b><span>' + esc(id) + ' · สละสิทธิ์แล้ว</span></span><span class="st"><span class="badge b-w">สละสิทธิ์</span></span></button>'; }).join('') +
+    (!hit.length && !gone.length ? '<div class="empty">ไม่พบ "' + esc(RQS) + '" ในรายชื่อนักเรียน</div>' : '');
+}
+function dRepItem(M, x) {
+  var f = M.f, e = dDone(M, x.id), isE = RMODE === 'E', id = x.id, p = f.P[id], en = f.E[id];
+  var tag = x.mv ? 'ย้ายจาก ' + x.mv : x.add ? 'สำรองลำดับที่ ' + x.add : '';
+  return '<div class="it"><span class="no">' + LV.s + '/' + x.no + '</span><span class="nm"><b>' + nm(x.r) + '</b><span>' + esc(id) + ' · เลขที่ ' + x.k + (tag ? ' · ' + esc(tag) : '') +
+    (!isE && en ? ' · มอบตัวแล้ว' : '') + (isE && p && !en ? ' · รายงานตัวแล้ว ' + esc(hm(p)) : '') + '</span></span><span class="st">' +
+    (e ? '<span class="badge b-a">' + (isE ? 'มอบตัว' : 'รายงานตัว') + 'แล้ว ' + esc(hm(e)) + '</span><button data-lx="undo" data-wid="' + esc(id) + '">ยกเลิก</button>'
+      : '<button class="pri" data-lx="mark" data-wid="' + esc(id) + '">✓ มา' + (isE ? 'มอบตัว' : 'รายงานตัว') + '</button><button data-dx="wopen" data-wid="' + esc(id) + '">สละสิทธิ์…</button>') +
+    '</span></div>';
+}
+
+/* ---------- หน้าจอ: คำร้องขอเปลี่ยนแผนการเรียน ---------- */
+function dStreamTab(M) {
+  var n = LC.counts(M.f, M.base), q = M.base.q, wait = {}, out = {};
+  Object.keys(M.f.rq).forEach(function (id) { var r = M.f.rq[id]; if (r.st !== 'wait' || !LC.active(M.f, M.base, id)) return; wait[r.to] = (wait[r.to] || 0) + 1; var s = LC.stream(M.f, M.base, id); out[s] = (out[s] || 0) + 1; });
+  return '<div style="overflow-x:auto"><table class="rooms"><tr><th>สาย</th><th>โควต้า</th><th>ปัจจุบัน</th><th>ที่ว่าง</th><th>รอเข้า</th><th>ขอออก</th></tr>' + CFG.streams.map(function (s) {
+    var fr = (q[s] || 0) - (n[s] || 0);
+    return '<tr><td style="text-align:left">' + chip(s) + '</td><td>' + (q[s] || '–') + '</td><td>' + (n[s] || 0) + '</td><td>' + (fr > 0 ? '<b class="ok-t">' + fr + '</b>' : fr < 0 ? '<span class="muted">เกิน ' + (-fr) + '</span>' : '–') + '</td><td>' + (wait[s] || '–') + '</td><td>' + (out[s] || '–') + '</td></tr>';
+  }).join('') + '</table></div>';
+}
+function vChg(M) {
+  var c = M.c, f = M.f, now = Date.now(), open = LC.inWindow(c, now), RN = dReqNo();
+  var win = (c.cFrom || c.cTo) ? 'รับคำร้อง ' + (c.cFrom ? esc(dTh(c.cFrom)) : '…') + ' ถึง ' + (c.cTo ? esc(dTh(c.cTo)) : '…') + ' · ' + (open ? '<b class="ok-t">เปิดรับอยู่</b>' : '<b class="bad-t">' + (LC.ymd(c.cFrom) > now ? 'ยังไม่เปิด' : 'ปิดแล้ว') + '</b>') : 'ยังไม่ได้กำหนดช่วงรับคำร้อง (รับได้ตลอด)';
+  var h = '<section class="card"><h2>คำร้องขอเปลี่ยนแผนการเรียน</h2><div class="muted">' + win + ' · พิจารณา' + (c.cOrder === 'time' ? 'ตามลำดับการยื่น' : 'ตามคะแนนสอบ (สูงกว่าได้ก่อน)') +
+    (c.cM3 ? ' · ม.3 เดิมได้พิจารณาก่อน' : '') + ' · ยื่นได้' + (c.cOnce ? 'คนละ 1 ครั้ง' : 'ไม่จำกัดครั้ง') + ' — <button data-dx="tab" data-t="set">แก้กติกา</button></div>' +
+    '<div class="muted">อนุมัติได้เมื่อสายปลายทางมีที่ว่าง และต้องพิจารณาตามลำดับในสายนั้น · คนที่อนุมัติแล้วย้ายไปต่อท้ายห้องของสายใหม่ (ห้องที่คนน้อยที่สุด) · สลับคู่ = ต่างคนไปต่อท้ายห้องของอีกฝ่าย</div>' + dStreamTab(M) + '</section>';
+  // ยื่นคำร้องใหม่
+  h += '<section class="card"><h2>บันทึกคำร้องใหม่</h2><div class="row"><label class="row" style="gap:6px">ผู้บันทึก <input id="dby" value="' + esc(DBY) + '" placeholder="ชื่อผู้บันทึก" style="width:12em"></label></div>';
+  if (!CSEL) h += '<input id="cq" placeholder="ค้นหาชื่อ / เลขที่สมัคร ของนักเรียนที่ยื่นคำร้อง" value="' + esc(CQS) + '" style="width:100%"><div class="list wl" id="cql">' + dChgFind(M) + '</div>';
+  else {
+    var r = dRow(M, CSEL), s0 = LC.stream(f, M.base, CSEL), cur = M.R.of[CSEL], n = LC.counts(f, M.base);
+    h += '<div class="nextr"><div class="big">' + nm(r) + '</div><div class="muted">' + esc(CSEL) + ' · ' + dTy(r) + ' · ตอนนี้อยู่ ' + (cur ? LV.s + '/' + cur.no + ' ' : '') + chip(s0) + ' ' + esc(dGName(M, s0)) + '</div>' +
+      '<div class="fgrid"><label>ขอเปลี่ยนไปสาย<select id="cto"><option value="">— เลือกสาย —</option>' + CFG.streams.filter(function (s) { return s !== s0; }).map(function (s) {
+        var fr = (M.base.q[s] || 0) - (n[s] || 0), qn = LC.queue(f, M.base, s).length;
+        return '<option value="' + esc(s) + '"' + (CTO === s ? ' selected' : '') + '>' + esc(s) + ' — ' + (fr > 0 ? 'ว่าง ' + fr : 'เต็ม') + (qn ? ' · รอ ' + qn : '') + '</option>'; }).join('') + '</select></label>' +
+      '<label>เหตุผลที่ขอเปลี่ยน<input id="cnote" value="' + esc(CNOTE) + '" placeholder="เช่น ผลการเรียนเหมาะกับสายใหม่ / ผู้ปกครองต้องการ"></label>' +
+      '<label>วันที่ยื่น (ถ้าไม่ใช่วันนี้)<input id="cdt" type="date" value="' + esc(CDT) + '"></label></div>' +
+      (CTO && c.cond[CTO] ? '<div class="hint warn">เงื่อนไขของสาย ' + esc(CTO) + ': ' + esc(c.cond[CTO]) + ' — ตรวจเอกสารก่อนรับคำร้อง</div>' : '') +
+      '<div class="tools"><button class="pri" data-lx="cq">บันทึกคำร้อง</button><button data-lx="cclear">ยกเลิก</button></div></div>';
+  }
+  h += '</section>';
+  // คิวที่รอพิจารณา แยกตามสายปลายทาง
+  var anyWait = false, qh = '';
+  CFG.streams.forEach(function (s) {
+    var qq = LC.queue(f, M.base, s); if (!qq.length) return; anyWait = true;
+    var n2 = LC.counts(f, M.base), fr = (M.base.q[s] || 0) - (n2[s] || 0);
+    qh += '<h3 style="margin:10px 0 4px">' + chip(s) + ' ' + esc(dGName(M, s)) + ' <span class="muted">· ที่ว่าง ' + Math.max(0, fr) + ' · รอ ' + qq.length + ' คน</span></h3>' + (c.cond[s] ? '<div class="muted">เงื่อนไข: ' + esc(c.cond[s]) + '</div>' : '') +
+      '<div class="list ll">' + qq.map(function (id, i) { return dChgItem(M, id, i, fr, RN); }).join('') + '</div>';
+  });
+  h += '<section class="card"><h2>รอพิจารณา</h2>' + (anyWait ? qh : '<div class="empty">ไม่มีคำร้องที่รอพิจารณา</div>') + '</section>';
+  // พิจารณาแล้ว
+  var dec = Object.keys(f.rq).filter(function (id) { return f.rq[id].st === 'ok' || f.rq[id].st === 'no' || f.rq[id].st === 'x'; })
+    .sort(function (a, b) { return (+(f.rq[b].d || f.rq[b].q)[10] || 0) - (+(f.rq[a].d || f.rq[a].q)[10] || 0); });
+  if (dec.length) h += '<section class="card"><h2>พิจารณาแล้ว / ถอนคำร้อง <span class="muted">(' + dec.length + ')</span></h2><div class="list ll">' + dec.map(function (id) {
+    var q = f.rq[id], r = dRow(M, id), lb = q.st === 'ok' ? '<span class="badge b-a">อนุมัติ</span>' : q.st === 'no' ? '<span class="badge b-d">ไม่อนุมัติ</span>' : '<span class="badge b-n">' + (q.auto ? 'ตกไป (สละสิทธิ์)' : 'ถอนคำร้อง') + '</span>';
+    var to = q.st === 'ok' && f.ch[id] ? f.ch[id][f.ch[id].length - 1] : null;
+    return '<div class="it"><span class="no">' + (reqNoOf(RN, q.q) ? '#' + reqNoOf(RN, q.q) : '') + '</span><span class="nm"><b>' + (r ? nm(r) : esc(id)) + '</b><span>' + esc(id) + ' · ขอไป ' + esc(q.to) + (to ? ' → ' + LV.s + '/' + to.room : '') +
+      (q.d && q.d[5] ? ' · ' + esc(q.d[5]) : '') + (q.d ? ' · ' + esc(beT(q.d[0])) : '') + '</span></span><span class="st">' + lb +
+      (q.st === 'ok' || q.st === 'no' ? '<button data-lx="cu" data-wid="' + esc(id) + '">ยกเลิกผล</button>' : q.st === 'x' && LC.active(f, M.base, id) ? '<button data-lx="cu" data-wid="' + esc(id) + '">' + (q.auto ? 'นำคำร้องกลับมา' : 'ยกเลิกการถอน') + '</button>' : '') + '<button data-dx="prev" data-k="creq1" data-arg="' + esc(id) + '">พิมพ์คำร้อง</button></span></div>';
+  }).join('') + '</div></section>';
+  return h;
+}
+function dChgFind(M) {
+  if (!CQS) return '<div class="empty">พิมพ์ชื่อหรือเลขที่สมัครเพื่อค้นหา</div>';
+  var hit = dActive(M).filter(function (x) { return match(x.r, CQS); }).slice(0, 30);
+  if (!hit.length) return '<div class="empty">ไม่พบ "' + esc(CQS) + '" ในรายชื่อนักเรียนปัจจุบัน</div>';
+  return hit.map(function (x) {
+    var q = M.f.rq[x.id], s = LC.stream(M.f, M.base, x.id);
+    return '<button class="it" data-lx="cpick" data-wid="' + esc(x.id) + '"><span class="no">' + LV.s + '/' + x.no + '</span><span class="nm"><b>' + nm(x.r) + '</b><span>' + esc(x.id) + ' · ' + esc(s) +
+      (q ? ' · คำร้องล่าสุด: ขอไป ' + esc(q.to) + ' (' + { wait: 'รอพิจารณา', ok: 'อนุมัติ', no: 'ไม่อนุมัติ', x: 'ถอน' }[q.st] + ')' : '') + '</span></span><span class="st"><span class="muted">แตะเพื่อเลือก</span></span></button>';
+  }).join('');
+}
+function dChgItem(M, id, i, fr, RN) {
+  var f = M.f, q = f.rq[id], r = dRow(M, id), s0 = LC.stream(f, M.base, id), x = M.base.main[id] || M.base.info[id] || {}, pair = LC.swapOf(f, M.base, id);
+  var can = i === 0 && fr > 0, why = can ? '<span class="badge b-a">ถึงคิว · มีที่ว่าง</span>' : i === 0 ? '<span class="badge b-n">รอที่ว่าง</span>' : '<span class="badge b-n">ลำดับที่ ' + (i + 1) + ' · รอคิวก่อนหน้า</span>';
+  var cur = M.R.of[id];
+  return '<div class="it"><span class="no">' + (i + 1) + '</span><span class="nm"><b>' + (r ? nm(r) : esc(id)) + '</b><span>' + esc(id) + ' · จาก ' + (cur ? LV.s + '/' + cur.no + ' ' : '') + esc(s0) + ' → ' + esc(q.to) +
+    ' · คะแนนรวม ' + esc(x.tot || '–') + ' · ยื่น ' + esc(beT(q.q[0])) + (reqNoOf(RN, q.q) ? ' · คำร้อง #' + reqNoOf(RN, q.q) : '') + (q.q[5] ? ' · ' + esc(q.q[5]) : '') +
+    (pair ? ' · <b>สลับกับ ' + esc(dName(pair)) + ' ได้</b>' : '') + '</span></span><span class="st">' + why +
+    (can ? '<button class="pri" data-lx="ca" data-wid="' + esc(id) + '">อนุมัติ</button>' : '') + (pair ? '<button class="pri" data-lx="cswap" data-wid="' + esc(id) + '" data-pair="' + esc(pair) + '">อนุมัติสลับคู่</button>' : '') +
+    '<button data-lx="cr" data-wid="' + esc(id) + '">ไม่อนุมัติ…</button><button data-lx="cx" data-wid="' + esc(id) + '">ถอน</button><button data-dx="prev" data-k="creq1" data-arg="' + esc(id) + '">พิมพ์</button></span></div>';
+}
+
+/* ---------- เอกสาร ---------- */
+function pgRoster(M) { // บัญชีรายชื่อนักเรียนรายห้อง (ปัจจุบัน) — 1 ห้องต่อหน้า
+  var ids = (DS && DS.ids) || {};
+  return M.R.rooms.map(function (x) {
+    var list = x.list, n = list.length, rh = n > 46 ? 5.1 : Math.min(6.2, 224 / Math.max(n, 1));
+    var parts = n > 46 ? chunks(list, 44, 44) : [list];
+    return parts.map(function (part, pi) {
+      return '<section class="pg"><div class="pt">บัญชีรายชื่อนักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + esc(M.c.yr) + '<br>' + esc(LV.s + '/' + x.room.no + ' ' + LV.room + x.room.g) +
+        '<br><span style="font-weight:400">ข้อมูล ณ วันที่ ' + nowTh() + ' น.' + (parts.length > 1 ? ' (หน้า ' + (pi + 1) + '/' + parts.length + ')' : '') + '</span></div>' +
+        '<table' + (rh < 5.5 ? ' class="dense"' : '') + '>' + colg([12, 21, 13, 24, 30, 26, 31, 26]) + '<thead><tr><th>เลขที่</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>สถานะ</th><th>หมายเหตุ</th><th>รหัสนักเรียนเดิม</th></tr></thead><tbody>' +
+        part.map(function (y) {
+          var id = y.id, k = dIdOf(M, id), st = M.f.E[id] ? 'มอบตัวแล้ว' : M.f.P[id] ? 'รายงานตัวแล้ว' : '';
+          return '<tr style="height:' + rh.toFixed(2) + 'mm"><td class="c">' + y.no + '</td><td class="c">' + esc(id) + '</td>' + nm3(y.r) + '<td class="c sm">' + st + '</td><td class="sm fit">' + esc(y.mv ? 'ย้ายจาก ' + y.mv : y.add ? 'สำรองลำดับที่ ' + y.add : '') + '</td><td class="c sm">' + esc(k.code && (k.st === 'old' || k.st === 'm3') ? k.code : '') + '</td></tr>';
+        }).join('') + '</tbody></table><div class="ft"><span>รวม <b>' + n + '</b> คน · มอบตัวแล้ว ' + list.filter(function (y) { return M.f.E[y.id]; }).length + ' คน</span></div>' +
+        '<div class="pn">พิมพ์จากระบบ ' + nowTh() + '</div></section>';
+    }).join('');
+  }).join('');
+}
+function pgReqForm(M, id) { // แบบคำร้องขอเปลี่ยนแผนการเรียน (ว่าง หรือกรอกข้อมูลจากคำร้องที่บันทึกแล้ว)
+  var f = M.f, q = id ? f.rq[id] : null, r = id ? dRow(M, id) : null, RN = dReqNo(), c = M.c;
+  var s0 = id ? (q && q.st === 'ok' && f.ch[id] && f.ch[id].length ? (f.ch[id].length > 1 ? f.ch[id][f.ch[id].length - 2].to : (M.base.main[id] ? M.base.main[id].s : str(f.R[id] && f.R[id][8]))) : LC.stream(f, M.base, id)) : '';
+  var room0 = id ? (q && q.st === 'ok' ? (M.P.roomOf[id] ? LV.s + '/' + M.P.roomOf[id].no : '') : (M.R.of[id] ? LV.s + '/' + M.R.of[id].no : '')) : '';
+  var to = q ? q.to : '', u = function (s, n) { return s ? '<u>&nbsp;' + esc(s) + '&nbsp;</u>' : dots(n); };
+  var nmTxt = r ? str(r[2]) + str(r[3]) + ' ' + str(r[4]) : '', d0 = q ? beT(q.q[0]).split(' ')[0] : '';
+  var res = q && q.st === 'ok' ? '☑ อนุมัติ ย้ายไปห้อง ' + LV.s + '/' + (f.ch[id] && f.ch[id].length ? f.ch[id][f.ch[id].length - 1].room : '....') + '&nbsp;&nbsp;&nbsp; ☐ ไม่อนุมัติ' : q && q.st === 'no' ? '☐ อนุมัติ &nbsp;&nbsp;&nbsp; ☑ ไม่อนุมัติ เนื่องจาก ' + esc(q.d && q.d[5] || '') : '☐ อนุมัติ ย้ายไปห้อง ' + LV.s + '/........ &nbsp;&nbsp;&nbsp; ☐ ไม่อนุมัติ เนื่องจาก ' + dots(40);
+  return '<section class="pg req" contenteditable="true" spellcheck="false"><div class="h">แบบคำร้องขอเปลี่ยนแผนการเรียน</div><div class="h" style="font-weight:400">โรงเรียนดัดดรุณี · ชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + (c.yr ? esc(c.yr) : dots(8)) + '</div>' +
+    '<div style="text-align:right;margin-top:4mm">' + (q ? 'คำร้องเลขที่ ' + reqNoOf(RN, q.q) + ' · ' : '') + 'วันที่ ' + (d0 ? esc(d0) : dots(30)) + '</div>' +
+    '<p><b>เรื่อง</b>&nbsp; ขอเปลี่ยนแผนการเรียน</p><p><b>เรียน</b>&nbsp; ผู้อำนวยการโรงเรียนดัดดรุณี</p>' +
+    '<p class="ind">ข้าพเจ้า ' + u(nmTxt, 60) + ' เลขที่สมัคร ' + u(id, 20) + ' นักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ห้อง ' + u(room0, 12) + '</p>' +
+    '<p>ปัจจุบันเรียนกลุ่มการเรียน ' + u(s0 ? dGName(M, s0) : '', 60) + '</p>' +
+    '<p>มีความประสงค์ขอเปลี่ยนเป็นกลุ่มการเรียน ' + u(to ? dGName(M, to) : '', 60) + '</p>' +
+    '<p>เนื่องจาก ' + u(q && q.q[5], 120) + '</p>' + (q && q.q[5] ? '' : '<p>' + dots(140) + '</p>') +
+    (to && c.cond[to] ? '<p class="note">เงื่อนไขของกลุ่มการเรียนที่ขอ: ' + esc(c.cond[to]) + '</p>' : '') +
+    '<p class="ind">ข้าพเจ้าและผู้ปกครองรับทราบว่า การเปลี่ยนแผนการเรียนขึ้นอยู่กับที่ว่างของกลุ่มการเรียนที่ขอ โดยพิจารณาตามลำดับ' + (c.cOrder === 'time' ? 'การยื่นคำร้อง' : 'คะแนนสอบคัดเลือก') + ' และยื่นคำร้องได้' + (c.cOnce ? 'คนละ 1 ครั้ง' : '') + ' หากได้รับอนุมัติจะย้ายไปต่อท้ายห้องของกลุ่มการเรียนใหม่</p>' +
+    '<div class="sg2"><div>ลงชื่อ.......................................นักเรียน<br>(' + (nmTxt ? esc(nmTxt) : dots(35)) + ')</div><div>ลงชื่อ.......................................ผู้ปกครอง<br>(' + dots(35) + ')<br>โทร ' + dots(25) + '</div></div>' +
+    '<div class="box"><b>ความเห็นครูที่ปรึกษา / หัวหน้างานรับนักเรียน</b><br>' + dots(150) + '<br><span style="display:inline-block;margin-left:55%">ลงชื่อ.......................................</span></div>' +
+    '<div class="box"><b>ผลการพิจารณา</b><br>' + res + '<br><span style="display:inline-block;margin-left:55%;text-align:center">ลงชื่อ.......................................<br>(' + esc(c.dir) + ')<br>' + esc(c.dirPos) + '</span></div>' +
+    '<div class="pn">' + (q ? 'บันทึกในระบบเมื่อ ' + esc(beT(q.q[0])) + ' · ' : '') + 'พิมพ์จากระบบ ' + nowTh() + '</div></section>';
+}
+function pgChgAnn(M) { // ประกาศรายชื่อผู้ได้รับอนุมัติเปลี่ยนแผนการเรียน + ทะเบียนคำร้องทั้งหมด (ใช้ภายใน)
+  var f = M.f, RN = dReqNo(), ok = [], all = [];
+  ((DS && DS.ev) || []).forEach(function (e) { if (e[2] === 'CQ') all.push(e); });
+  Object.keys(f.ch).forEach(function (id) { if (f.W[id]) return; var h = f.ch[id]; ok.push({ id: id, to: h[h.length - 1], e: h[h.length - 1].e }); });
+  ok.sort(function (a, b) { return (+a.e[10] || 0) - (+b.e[10] || 0); });
+  var from = function (id) { var h = f.ch[id]; return h.length > 1 ? h[h.length - 2].to : (M.base.main[id] ? M.base.main[id].s : str(f.R[id] && f.R[id][8])); };
+  var h = pgList(M, ok, {
+    title: 'ประกาศรายชื่อนักเรียนที่ได้รับอนุมัติให้เปลี่ยนแผนการเรียน<br>ชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + esc(M.c.yr) + '<br><span style="font-weight:400">ข้อมูล ณ วันที่ ' + nowTh() + ' น.</span>',
+    first: 38, rest: 46, sig: 1, w: [10, 20, 13, 22, 26, 45, 45, 19],
+    head: '<tr><th>ที่</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>จากกลุ่มการเรียน</th><th>เป็นกลุ่มการเรียน</th><th>ห้องใหม่</th></tr>',
+    row: function (x) { var r = dRow(M, x.id); return '<tr style="height:5.6mm"><td class="c">' + (ok.indexOf(x) + 1) + '</td><td class="c">' + esc(x.id) + '</td>' + (r ? nm3(r) : '<td></td><td>' + esc(x.id) + '</td><td></td>') +
+      '<td class="sm fit">' + esc(dGName(M, from(x.id))) + '</td><td class="sm fit">' + esc(dGName(M, x.to.to)) + '</td><td class="c">' + LV.s + '/' + esc(x.to.room) + '</td></tr>'; },
+    tail: '<div class="sb" style="margin-top:10mm">(' + esc(M.c.dir) + ')<br>' + esc(M.c.dirPos) + '</div>'
+  });
+  if (!ok.length) h = '<section class="pg"><div class="pt">ประกาศรายชื่อนักเรียนที่ได้รับอนุมัติให้เปลี่ยนแผนการเรียน<br>ชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + esc(M.c.yr) + '</div><div class="hint">ยังไม่มีคำร้องที่อนุมัติ</div></section>';
+  var stx = function (e) { var q = f.rq[e[3]]; if (!q || q.q !== e) return 'คำร้องเดิม (มีคำร้องใหม่กว่า)'; return { wait: 'รอพิจารณา', ok: 'อนุมัติ', no: 'ไม่อนุมัติ', x: q.auto ? 'ตกไป (สละสิทธิ์)' : 'ถอนคำร้อง' }[q.st] + (q.d && q.d[5] ? ' · ' + q.d[5] : ''); };
+  h += pgList(M, all, {
+    title: 'ทะเบียนคำร้องขอเปลี่ยนแผนการเรียน (ใช้ภายใน) — ' + LV.s + ' ปีการศึกษา ' + esc(M.c.yr), first: 44, rest: 46, stamp: 1, w: [11, 20, 13, 22, 25, 30, 28, 51],
+    head: '<tr><th>เลขที่</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>ขอไปสาย</th><th>ยื่นเมื่อ</th><th>ผล</th></tr>',
+    row: function (e) { var r = dRow(M, e[3]); return '<tr style="height:5.6mm"><td class="c">' + reqNoOf(RN, e) + '</td><td class="c">' + esc(e[3]) + '</td>' + (r ? nm3(r) : '<td></td><td>' + esc(e[3]) + '</td><td></td>') +
+      '<td class="sm fit">' + esc(e[8]) + '</td><td class="c xs">' + esc(beT(e[0])) + '</td><td class="sm fit">' + esc(stx(e)) + '</td></tr>'; }
+  });
+  return h;
+}
+DOCS.push(['roster', 'บัญชีรายชื่อนักเรียนรายห้อง (ปัจจุบัน)', 'รายชื่อรายห้อง', 1], ['creq', 'แบบคำร้องขอเปลี่ยนแผนการเรียน (ฉบับว่าง)', 'แบบคำร้องเปลี่ยนแผน', 0], ['cann', 'ประกาศผู้ได้รับอนุมัติเปลี่ยนแผน + ทะเบียนคำร้อง', 'ประกาศเปลี่ยนแผน', 1]);
+DOC_FN.roster = pgRoster; DOC_FN.creq = function (M) { return pgReqForm(M, ''); }; DOC_FN.cann = pgChgAnn;
+DOC_FN.creq1 = function (M, id) { return id && M.f.rq[id] ? pgReqForm(M, id) : ''; }; DOC_X.creq1 = ['แบบคำร้องขอเปลี่ยนแผนการเรียน', 'คำร้องเปลี่ยนแผน', 0];
+DOC_DESC.roster = function (M) { return 'ห้องละหน้า · หลังสละสิทธิ์ เรียกสำรอง และเปลี่ยนแผน · สถานะรายงานตัว/มอบตัว · รหัสนักเรียนเดิม (ถ้ามี)'; };
+DOC_DESC.creq = function () { return 'แบบฟอร์ม 1 หน้า ให้นักเรียน/ผู้ปกครองกรอก (พิมพ์แบบกรอกข้อมูลแล้วได้จากแท็บเปลี่ยนแผนการเรียน)'; };
+DOC_DESC.cann = function (M) { var n = Object.keys(M.f.ch).filter(function (id) { return !M.f.W[id]; }).length; return 'ประกาศผู้ได้รับอนุมัติ ' + n + ' คน พร้อมห้องใหม่ · ทะเบียนคำร้องทุกฉบับและผลพิจารณา (ใช้ภายใน)'; };
+
+/* ---------- เหตุการณ์ ---------- */
+document.addEventListener('click', function (ev) {
+  var t = ev.target.closest('[data-lx]'); if (!t || t.disabled || V !== 'doc') return;
+  var x = t.dataset.lx, id = t.dataset.wid, M = DM || dModel(), lb = RMODE === 'E' ? 'มอบตัว' : 'รายงานตัว';
+  switch (x) {
+    case 'mode': RMODE = t.dataset.m; SS.set('rmode', RMODE); render(); return;
+    case 'room': RROOM = t.dataset.r; SS.set('rroom', RROOM); render(); return;
+    case 'mark': dEv(RMODE, id, ''); return;
+    case 'undo': if (confirm('ยกเลิกการบันทึก' + lb + 'ของ ' + dName(id) + ' ?')) dEv(RMODE === 'E' ? 'UE' : 'UP', id, ''); return;
+    case 'bulk': {
+      var pool = dActive(M).filter(function (y) { return (RROOM === 'all' || String(y.no) === String(RROOM)) && !dDone(M, y.id); }).map(function (y) { return y.id; });
+      if (!pool.length) return;
+      if (!confirm('บันทึกว่า ' + pool.length + ' คน' + (RROOM === 'all' ? '' : 'ใน ' + LV.s + '/' + RROOM) + ' มา' + lb + 'แล้ว ?\n\nตรวจก่อนว่าบันทึกคนที่ไม่มาเป็น "สละสิทธิ์" ครบแล้ว (แก้ทีละคนได้ด้วยปุ่มยกเลิก)')) return;
+      dact('docEv', { t: RMODE, ids: pool, by: DBY }, 'บันทึก' + lb + ' ' + pool.length + ' คน'); return;
+    }
+    case 'cpick': CSEL = id; CTO = ''; CNOTE = ''; CDT = ''; render(); return;
+    case 'cclear': CSEL = ''; CTO = ''; CNOTE = ''; CDT = ''; render(); return;
+    case 'cq': {
+      CTO = $('cto') ? $('cto').value : CTO; CNOTE = $('cnote') ? $('cnote').value.trim() : CNOTE; CDT = $('cdt') ? $('cdt').value : CDT;
+      if (!CTO) { toast('เลือกสายที่ขอเปลี่ยนไปก่อน', true); return; }
+      if (!CNOTE) { toast('ใส่เหตุผลที่ขอเปลี่ยนก่อน', true); return; }
+      var d0 = LC.ymd(CDT), ex = { s: CTO };
+      if (CDT && !d0) { toast('วันที่ยื่นไม่ถูกต้อง', true); return; }
+      if (d0 && d0 > Date.now()) { toast('วันที่ยื่นต้องไม่เป็นวันในอนาคต', true); return; }
+      if (d0 && Date.now() - d0 >= 86400000) ex.at = d0 + 12 * 3600000; // คำร้องกระดาษที่ยื่นวันก่อน: ใช้วันที่ยื่นจริงตัดสินช่วงรับคำร้องและลำดับ
+      var note = CNOTE + (CDT && ex.at ? ' (ยื่นวันที่ ' + dTh(CDT) + ')' : '');
+      if (dEv('CQ', CSEL, note, ex)) { var who = CSEL; CSEL = ''; CTO = ''; CNOTE = ''; CDT = ''; CQS = ''; toast('บันทึกคำร้องแล้ว — พิมพ์แบบคำร้องให้ลงชื่อได้ที่รายการด้านล่าง'); dEvAfter(who); }
+      return;
+    }
+    case 'ca': {
+      var q = M.f.rq[id], room = dRoomFor(M, q.to);
+      if (!confirm('อนุมัติ ' + dName(id) + '\nย้ายจาก ' + LC.stream(M.f, M.base, id) + ' ไป ' + q.to + ' → เข้าห้อง ' + LV.s + '/' + room + ' (ต่อท้ายห้อง)' + (M.c.cond[q.to] ? '\n\nเงื่อนไขของสาย: ' + M.c.cond[q.to] + '\nตรวจเอกสารแล้วใช่ไหม?' : ''))) return;
+      dEv('CA', id, '', { s: q.to, room: room, d: LV.s + '/' + room }); return;
+    }
+    case 'cswap': {
+      var p2 = t.dataset.pair, a = M.R.of[id], b = M.R.of[p2];
+      if (!a || !b) { toast('หาห้องปัจจุบันของคู่นี้ไม่พบ', true); return; }
+      if (!confirm('อนุมัติสลับสายพร้อมกัน 2 คน:\n• ' + dName(id) + ' → ' + M.f.rq[id].to + ' (' + LV.s + '/' + b.no + ')\n• ' + dName(p2) + ' → ' + M.f.rq[p2].to + ' (' + LV.s + '/' + a.no + ')')) return;
+      dact('docEv', { t: 'CA', id: id, pair: p2, by: DBY, s: M.f.rq[id].to, room: b.no, d: LV.s + '/' + b.no, nm: dName(id), s2: M.f.rq[p2].to, room2: a.no, d2: LV.s + '/' + a.no, nm2: dName(p2) }, 'อนุมัติสลับสาย'); return;
+    }
+    case 'cr': { var why = prompt('เหตุผลที่ไม่อนุมัติ (' + dName(id) + ')', ''); if (why === null) return; if (!why.trim()) { toast('ใส่เหตุผลก่อน', true); return; } dEv('CR', id, why.trim()); return; }
+    case 'cx': if (confirm('บันทึกว่า ' + dName(id) + ' ถอนคำร้อง ?')) dEv('CX', id, ''); return;
+    case 'cu': {
+      var rq = M.f.rq[id], pr = rq && rq.st === 'ok' && rq.pair, rq2 = pr && M.f.rq[pr];
+      if (pr && rq2 && rq2.st === 'ok' && rq2.pair === id) { // อนุมัติแบบสลับคู่ → ยกเลิกพร้อมกันทั้งคู่ (ต่างคนต่างกลับสายเดิม)
+        if (confirm('ยกเลิกการสลับสายของทั้งคู่ (กลับเป็นรอพิจารณา):\n• ' + dName(id) + '\n• ' + dName(pr))) dact('docEv', { t: 'CU', id: id, pair: pr, by: DBY, nm: dName(id), nm2: dName(pr) }, 'ยกเลิกการสลับสาย');
+        return;
+      }
+      if (confirm('ยกเลิกผลพิจารณาคำร้องของ ' + dName(id) + ' (กลับเป็นรอพิจารณา) ?')) dEv('CU', id, ''); return;
+    }
+  }
+});
+function dEvAfter(id) { setTimeout(function () { if (V === 'doc') render(); }, 0); }
+document.addEventListener('input', function (ev) {
+  var t = ev.target; if (V !== 'doc') return;
+  if (t.id === 'rq') { RQS = t.value.trim(); var l = $('rql'); if (l) l.innerHTML = dRepFind(DM || dModel(), dActive(DM || dModel())); }
+  else if (t.id === 'cq') { CQS = t.value.trim(); var l2 = $('cql'); if (l2) l2.innerHTML = dChgFind(DM || dModel()); }
+  else if (t.id === 'cnote') CNOTE = t.value;
+});
+document.addEventListener('change', function (ev) {
+  var t = ev.target; if (V !== 'doc') return;
+  if (t.id === 'cto') { CTO = t.value; CNOTE = $('cnote') ? $('cnote').value : CNOTE; CDT = $('cdt') ? $('cdt').value : CDT; render(); }
+  else if (t.id === 'cdt') CDT = t.value;
+});
+
+/* ===================== 4ค) รหัสนักเรียน: ทะเบียนนักเรียนเดิมจาก DMC + จับคู่ + บัญชีส่งงานทะเบียน ===================== */
+var XLSX_URL = window.XLSX_URL || 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+var DMC = { busy: '', files: [], err: '', log: [], oddOpen: false, fd: {} }, IDQ = '', IDSHOW = SS.get('idshow') || 'chk';
+
+/** สถานะรหัสของนักเรียน 1 คน = ผลจับคู่จากเซิร์ฟเวอร์ + การยืนยันของครู (รายการล่าสุดชนะ) */
+function dIdOf(M, id) {
+  var e = M.f.id[id], s = (DS && DS.ids && DS.ids[id]) || null, r = dRow(M, id), m;
+  if (e && (m = /^รหัสเดิม (\d+)$/.exec(str(e[4])))) return { st: 'old', code: m[1], how: 'ครูยืนยัน', det: (s && s[3]) || '', by: e };
+  if (e && str(e[4]) === 'ออกรหัสใหม่') return { st: 'new', code: '', how: 'ครูยืนยัน', det: '', by: e };
+  if (s) return { st: s[0], code: s[1], how: s[2], det: s[3] };
+  if (r && isM3(r)) return { st: 'm3', code: id, how: 'code', det: '' };
+  return { st: DS && DS.dmc && DS.dmc.n ? 'new' : '?', code: '', how: '', det: '' };
+}
+var ID_LB = { old: 'ใช้รหัสเดิม', m3: 'ม.3 เดิม (รหัสเดิม)', chk: 'ต้องตรวจ', new: 'ออกรหัสใหม่', '?': 'ยังไม่มีทะเบียน DMC' };
+function dIdList(M) { return dActive(M).map(function (x) { var k = dIdOf(M, x.id); k.id = x.id; k.r = x.r; k.no = x.no; k.k = x.k; return k; }); }
+
+/* ---------- หน้าจอ ---------- */
+function vIds(M) {
+  var dm = (DS && DS.dmc) || { n: 0, terms: [], odd: [] }, L = dIdList(M), cnt = { old: 0, m3: 0, chk: 0, new: 0, '?': 0 };
+  L.forEach(function (k) { cnt[k.st] = (cnt[k.st] || 0) + 1; });
+  var h = '<section class="card"><h2>ทะเบียนนักเรียนเดิม (ไฟล์ DMC)</h2>' +
+    (dm.n ? '<div class="muted">มีในทะเบียน <b>' + dm.n.toLocaleString() + '</b> คน · ภาคเรียน: ' + dm.terms.map(function (t) { return esc(t[0]) + ' (' + t[1] + ')'; }).join(' · ') + '</div>'
+      : '<div class="hint warn">ยังไม่มีทะเบียน — อัปโหลดไฟล์ DMC ย้อนหลังที่มีทั้งหมด (เช่น 67-1, 67-2, 68-1, 68-2, 2569-1) ระบบจะรวมเป็นทะเบียนเดียว</div>') +
+    '<div class="muted">อัปโหลดเพิ่มปีละครั้งก่อนประกาศผล (แบบสะสม คนเดิมอัปเดตเป็นข้อมูลล่าสุด ไม่ลบใคร) · ระบบเก็บเฉพาะ เลขประจำตัวประชาชน รหัส ชื่อ-สกุล วันเกิด ชั้นล่าสุด ข้อมูลอื่นในไฟล์ไม่ถูกส่งออกจากเครื่องนี้ · ทะเบียนอยู่ในแท็บที่ซ่อนไว้ในชีตจัดสาย</div>' +
+    '<div class="row"><input type="file" id="dmcf" multiple accept=".xlsx,.xls,.csv"><button class="pri" data-mx="read"' + (DMC.busy ? ' disabled' : '') + '>อ่านไฟล์ที่เลือก</button></div>';
+  if (DMC.busy) h += '<div class="row"><div class="spin"></div> ' + esc(DMC.busy) + '</div>';
+  if (DMC.err) h += '<div class="hint bad">' + esc(DMC.err) + '</div>';
+  if (DMC.files.length) {
+    h += '<div style="overflow-x:auto"><table class="rooms"><tr><th style="text-align:left">ไฟล์</th><th>ภาคเรียน</th><th>นักเรียน</th><th>สถานะ</th></tr>' + DMC.files.map(function (x, i) {
+      return '<tr><td style="text-align:left">' + esc(x.name) + '</td><td><input id="mterm' + i + '" data-mterm="' + i + '" value="' + esc(x.term) + '" placeholder="เช่น 2569-1" style="width:7em"' + (x.done ? ' disabled' : '') + '></td><td>' + (x.rows ? x.rows.length.toLocaleString() : '–') + '</td><td style="text-align:left">' + esc(x.msg || '') + '</td></tr>'; }).join('') + '</table></div>' +
+      '<div class="tools"><button class="pri" data-mx="send"' + (DMC.busy || !DMC.files.some(function (x) { return x.rows && !x.done; }) ? ' disabled' : '') + '>บันทึกลงทะเบียน</button><button data-mx="clear">ล้างรายการไฟล์</button></div>';
+  }
+  if (dm.odd && dm.odd.length) h += '<details id="dmcodd"' + (DMC.oddOpen ? ' open' : '') + '><summary>รหัสในทะเบียนที่ต้องตรวจ (' + dm.odd.length + ')</summary><div class="muted">รหัสไม่ใช่ 5 หลัก หรือรหัสเดียวกันเป็นของ 2 คน — ถ้ายืนยันกับงานทะเบียนแล้ว ใส่รหัสที่ถูกต้อง (ไม่แก้ไฟล์ DMC)</div>' +
+    '<div class="list ll">' + dm.odd.map(function (o, i) {
+      return '<div class="it"><span class="nm"><b>' + esc(o.nm) + '</b><span>รหัสใน DMC ' + esc(o.code) + ' · ' + esc(o.cls || '') + ' ' + esc(o.term || '') + ' · ' + (o.t === 'dup' ? 'รหัสซ้ำกับอีกคน' : 'รหัสไม่ใช่ 5 หลัก') + (o.fix ? ' · แก้เป็น <b>' + esc(o.fix) + '</b>' : '') + '</span></span>' +
+        '<span class="st"><input id="mfix' + i + '" data-mfix="' + i + '" placeholder="รหัสที่ถูกต้อง" value="' + esc(DMC.fd[i] != null ? DMC.fd[i] : (o.fix || '')) + '" style="width:8em"><button data-mx="fix" data-i="' + i + '">บันทึก</button></span></div>'; }).join('') + '</div></details>';
+  h += '</section>';
+  // ผลจับคู่
+  h += '<section class="card"><h2>รหัสนักเรียนของผู้ผ่านการคัดเลือก</h2><section class="stats">' + dStat(cnt.old + cnt.m3, 'ใช้รหัสเดิม', (LV.m4 ? 'ม.3 เดิม ' + cnt.m3 + ' · ' : '') + 'นักเรียนเดิมกลับมา ' + cnt.old) +
+    dStat(cnt.chk, 'ต้องตรวจ', 'ครูยืนยันก่อนส่งงานทะเบียน') + dStat(cnt.new, 'ออกรหัสใหม่') + (cnt['?'] ? dStat(cnt['?'], 'ยังจับคู่ไม่ได้', 'ไม่มีทะเบียน DMC') : '') + '</section>' +
+    '<div class="muted">จับคู่ด้วยเลขประจำตัวประชาชนก่อน (แม่นที่สุด) · ถ้าไม่มีหรือไม่ตรง แต่ชื่อ-สกุลตรงกับนักเรียนเดิม → "ต้องตรวจ" ให้ครูยืนยัน · ผู้สละสิทธิ์ไม่อยู่ในรายการ</div>' +
+    '<div class="dtabs" style="flex-wrap:wrap">' + [['chk', 'ต้องตรวจ', cnt.chk], ['old', 'ใช้รหัสเดิม', cnt.old + cnt.m3], ['new', 'ออกรหัสใหม่', cnt.new + cnt['?']], ['all', 'ทั้งหมด', L.length]].map(function (x) {
+      return '<button data-mx="show" data-s="' + x[0] + '" aria-pressed="' + (IDSHOW === x[0]) + '">' + x[1] + ' <small>' + x[2] + '</small></button>'; }).join('') + '</div>' +
+    '<input id="idq" placeholder="ค้นหาชื่อ / เลขที่สมัคร" value="' + esc(IDQ) + '" style="width:100%"><div class="list ll" id="idl">' + dIdRows(M, L) + '</div>' +
+    '<div class="tools"><button class="pri" data-dx="prev" data-k="reg"' + (cnt.chk ? ' disabled' : '') + '>บัญชีส่งงานทะเบียน (PDF)</button><button data-mx="csv"' + (cnt.chk ? ' disabled' : '') + '>ดาวน์โหลด CSV ส่งงานทะเบียน</button>' +
+    (cnt.chk ? '<span class="muted">ยืนยันรายการ "ต้องตรวจ" ให้ครบก่อน (' + cnt.chk + ' คน)</span>' : '') + '</div></section>';
+  return h;
+}
+function dIdRows(M, L) {
+  var rows = L.filter(function (k) { return (IDSHOW === 'all' || (IDSHOW === 'old' ? k.st === 'old' || k.st === 'm3' : IDSHOW === 'new' ? k.st === 'new' || k.st === '?' : k.st === IDSHOW)) && (!IDQ || match(k.r, IDQ)); });
+  if (!rows.length) return '<div class="empty">' + (IDQ ? 'ไม่พบ "' + esc(IDQ) + '"' : IDSHOW === 'chk' ? 'ไม่มีรายการที่ต้องตรวจ ✓' : 'ไม่มีรายการ') + '</div>';
+  return rows.slice(0, 200).map(function (k) {
+    var b = k.st === 'chk' ? 'b-n' : k.st === 'new' || k.st === '?' ? 'b-d' : 'b-a';
+    var acts = k.st === 'm3' ? '' : (k.st !== 'old' && k.code ? '<button class="pri" data-mx="old" data-wid="' + esc(k.id) + '" data-code="' + esc(k.code) + '">ใช่ — ใช้รหัส ' + esc(k.code) + '</button>' : '') +
+      (k.st !== 'new' ? '<button data-mx="new" data-wid="' + esc(k.id) + '">' + (k.st === 'chk' ? 'ไม่ใช่ — ออกรหัสใหม่' : 'ออกรหัสใหม่') + '</button>' : '') +
+      '<button data-mx="own" data-wid="' + esc(k.id) + '">ใส่รหัสเอง…</button>';
+    return '<div class="it"><span class="no">' + LV.s + '/' + k.no + '</span><span class="nm"><b>' + nm(k.r) + '</b><span>' + esc(k.id) + ' · ' + dTy(k.r) + (k.det ? ' · ' + esc(k.det) : '') + (k.how === 'ครูยืนยัน' ? ' · ครูยืนยันแล้ว' : k.how === 'nid' ? ' · ตรงเลขประจำตัวประชาชน' : '') + '</span></span>' +
+      '<span class="st"><span class="badge ' + b + '">' + esc(ID_LB[k.st]) + (k.code && k.st !== 'chk' ? ' ' + esc(k.code) : '') + '</span>' + acts + '</span></div>';
+  }).join('') + (rows.length > 200 ? '<div class="muted">… อีก ' + (rows.length - 200) + ' คน (ค้นหาเพื่อดูเพิ่ม)</div>' : '');
+}
+
+/* ---------- อ่านไฟล์ DMC ในเครื่อง (ไม่ส่งไฟล์ทั้งไฟล์ออกไป) ---------- */
+function dmcLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise(function (ok, no) {
+    var s = document.createElement('script'); s.src = XLSX_URL; s.onload = function () { window.XLSX ? ok(window.XLSX) : no(new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ')); };
+    s.onerror = function () { no(new Error('โหลดตัวอ่านไฟล์ Excel ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง')); }; document.head.appendChild(s);
+  });
+}
+function dmcTerm(name) { var m = /(25\d{2}|\d{2})\s*[-_ ]\s*([12])(?!\d)/.exec(name || ''); return m ? (m[1].length === 2 ? '25' + m[1] : m[1]) + '-' + m[2] : ''; }
+function dmcParse(X, buf, name) {
+  var wb = X.read(buf, { type: 'array' }), ws = wb.Sheets[wb.SheetNames[0]], v = X.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+  var vr = X.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }); // ค่าดิบ: เลขประจำตัวประชาชนที่เก็บเป็นตัวเลขจะไม่กลายเป็น 1.1E+12
+  var digits = function (i, c2) { var x = (vr[i] || [])[c2]; return typeof x === 'number' ? x.toFixed(0) : String(x == null ? '' : x); };
+  var hi = -1; for (var i = 0; i < Math.min(15, v.length); i++) { var t = v[i].join('|'); if (/เลขประจำตัวประชาชน/.test(t) && /รหัสนักเรียน/.test(t)) { hi = i; break; } }
+  if (hi < 0) throw new Error(name + ': ไม่พบหัวตาราง "เลขประจำตัวประชาชน" และ "รหัสนักเรียน" (ใช่ไฟล์ DMC หรือไม่?)');
+  var H = v[hi].map(function (x) { return String(x).trim(); }), at = function (re) { for (var j = 0; j < H.length; j++) if (re.test(H[j])) return j; return -1; };
+  var c = { nid: at(/^เลขประจำตัวประชาชน$/), code: at(/^รหัสนักเรียน$/), pre: at(/^คำนำหน้าชื่อ$/), fn: at(/^ชื่อ$/), ln: at(/^นามสกุล$/), dob: at(/^วันเกิด$/), cls: at(/^ชั้น$/), room: at(/^ห้อง$/) };
+  if (c.nid < 0 || c.code < 0 || c.fn < 0) throw new Error(name + ': ไม่พบคอลัมน์ที่ต้องใช้ (เลขประจำตัวประชาชน / รหัสนักเรียน / ชื่อ)');
+  var rows = [];
+  v.forEach(function (r, i) {
+    if (i <= hi) return;
+    var nid = digits(i, c.nid).replace(/[^0-9Gg]/g, ''), code = digits(i, c.code).replace(/\D/g, '');
+    if (!nid && !code) return;
+    rows.push([nid, code, c.pre >= 0 ? r[c.pre] : '', r[c.fn], c.ln >= 0 ? r[c.ln] : '', c.dob >= 0 ? r[c.dob] : '', (c.cls >= 0 ? String(r[c.cls]) : '') + (c.room >= 0 && r[c.room] !== '' ? '/' + r[c.room] : '')]);
+  });
+  return rows;
+}
+function dmcRead() {
+  var inp = $('dmcf'), fl = inp && inp.files ? [].slice.call(inp.files) : [];
+  if (!fl.length) { toast('เลือกไฟล์ DMC ก่อน (เลือกได้หลายไฟล์)', true); return; }
+  DMC.err = ''; DMC.busy = 'กำลังอ่านไฟล์…'; render();
+  dmcLib().then(function (X) {
+    return fl.reduce(function (p, file) {
+      return p.then(function () {
+        return file.arrayBuffer().then(function (buf) {
+          var rows = dmcParse(X, buf, file.name);
+          DMC.files.push({ name: file.name, term: dmcTerm(file.name), rows: rows, msg: 'อ่านแล้ว ' + rows.length.toLocaleString() + ' คน' });
+        });
+      });
+    }, Promise.resolve());
+  }).then(function () { DMC.busy = ''; if (inp) inp.value = ''; render(); }, function (e) { DMC.busy = ''; DMC.err = e.message; render(); });
+}
+function dmcSend() {
+  var todo = DMC.files.filter(function (x) { return x.rows && !x.done; });
+  if (todo.some(function (x) { return !/^(25\d{2}|\d{2})-[12]$/.test(str(x.term)); })) { toast('ระบุภาคเรียนของทุกไฟล์ก่อน (เช่น 2569-1)', true); return; }
+  if (!confirm('บันทึก ' + todo.length + ' ไฟล์ลงทะเบียนนักเรียนเดิม ?\n(ส่งเฉพาะ เลขประจำตัวประชาชน รหัส ชื่อ-สกุล วันเกิด ชั้น)')) return;
+  todo.sort(function (a, b) { return dmcKey(a.term) - dmcKey(b.term); }); // เก่า → ใหม่ คนเดิมจึงจบที่ข้อมูลล่าสุด
+  DMC.busy = 'กำลังบันทึก…'; render();
+  var one = function (i) {
+    if (i >= todo.length) { DMC.busy = ''; DLAST = 0; dload(true); render(); return; }
+    var x = todo[i], tries = 0;
+    DMC.busy = 'กำลังบันทึก ' + x.name + ' (' + (i + 1) + '/' + todo.length + ')…'; render();
+    var go = function () {
+      send({ a: 'docDmc', token: TOKEN, rid: x.rid || (x.rid = rid()), p: { term: x.term, file: x.name, rows: x.rows, by: DBY } }).then(function (r) {
+        if (r && r.ok) { x.done = 1; x.msg = '✓ ' + r.msg; x.rows = x.rows.length ? x.rows : x.rows; if (r.doc) { dkeepEx(r.doc); DBASE = r.doc; SS.set('doc', DBASE); DS = dreplay(DBASE); } one(i + 1); }
+        else if (r && r.code === 'BUSY' && ++tries < 6) setTimeout(go, 2000 * tries);
+        else if (r && r.code === 'AUTH') { DMC.busy = ''; PAUSED = true; showLogin('หมดเวลาเข้าสู่ระบบ กรุณาใส่รหัสผ่านอีกครั้ง'); }
+        else { DMC.busy = ''; x.msg = '✗ ' + dErr(r); render(); }
+      }, function (e) { DMC.busy = ''; x.msg = '✗ ' + e.message + ' (กดบันทึกอีกครั้งได้ ไม่บันทึกซ้ำ)'; render(); });
+    };
+    go();
+  };
+  one(0);
+}
+function dmcKey(t) { var m = /^(\d{2,4})-(\d)$/.exec(str(t)); if (!m) return 0; var y = +m[1]; if (y < 100) y += 2500; return y * 10 + +m[2]; }
+
+/* ---------- เอกสาร: บัญชีส่งงานทะเบียน ---------- */
+function pgReg(M) {
+  var L = dIdList(M), old = L.filter(function (k) { return k.st === 'old' || k.st === 'm3'; }), nw = L.filter(function (k) { return k.st === 'new' || k.st === '?'; });
+  var t = 'บัญชีรายชื่อนักเรียนชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ปีการศึกษา ' + esc(M.c.yr) + ' สำหรับงานทะเบียน';
+  var h = pgList(M, old, {
+    title: t + '<br>(1) นักเรียนเดิม — ใช้รหัสนักเรียนเดิม ห้ามออกรหัสใหม่ (' + old.length + ' คน)<br><span style="font-weight:400">ข้อมูล ณ วันที่ ' + nowTh() + ' น.</span>',
+    first: 38, rest: 46, stamp: 1, sig: 1, w: [10, 18, 20, 13, 22, 26, 17, 54],
+    head: '<tr><th>ที่</th><th>รหัสเดิม</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>ห้องใหม่</th><th>ข้อมูลในทะเบียนเดิม / วิธีตรวจ</th></tr>',
+    row: function (k) { return '<tr style="height:5.6mm"><td class="c">' + (old.indexOf(k) + 1) + '</td><td class="c"><b>' + esc(k.code) + '</b></td><td class="c">' + esc(k.id) + '</td>' + nm3(k.r) + '<td class="c">' + LV.s + '/' + k.no + '</td><td class="xs fit">' + esc(dIdShort(k)) + '</td></tr>'; }
+  });
+  if (!old.length) h = '<section class="pg"><div class="pt">' + t + '<br>(1) นักเรียนเดิม — ใช้รหัสนักเรียนเดิม</div><div class="hint">ไม่มี</div></section>';
+  h += pgList(M, nw, {
+    title: t + '<br>(2) นักเรียนใหม่ — ออกรหัสนักเรียนใหม่ (' + nw.length + ' คน)', first: 40, rest: 46, stamp: 1, sig: 1, w: [10, 20, 13, 24, 28, 17, 68],
+    head: '<tr><th>ที่</th><th>เลขที่สมัคร</th><th colspan="3">ชื่อ-สกุล</th><th>ห้องใหม่</th><th>โรงเรียนเดิม</th></tr>',
+    row: function (k) { return '<tr style="height:5.6mm"><td class="c">' + (nw.indexOf(k) + 1) + '</td><td class="c">' + esc(k.id) + '</td>' + nm3(k.r) + '<td class="c">' + LV.s + '/' + k.no + '</td><td class="sm fit">' + esc(dSch(M, k.id)) + '</td></tr>'; }
+  });
+  return h;
+}
+function dIdShort(k) { // ข้อความสั้นสำหรับบัญชีส่งงานทะเบียน: วิธียืนยัน · ชั้นเดิม (ภาคเรียน)
+  var m = /(ม\.\d+\/\d+)\s*(?:ภาค\s*(\d{4}-\d))?/.exec(k.det || ''), where = m ? m[1] + (m[2] ? ' (' + m[2] + ')' : '') : '';
+  var how = k.st === 'm3' ? 'ม.3 เดิม (โควตา)' : k.how === 'ครูยืนยัน' ? 'ครูยืนยัน' : k.how === 'nid' ? 'เลขประจำตัวประชาชนตรง' : '';
+  return [how, where ? 'เดิม ' + where : ''].filter(Boolean).join(' · ');
+}
+function dRegCsv(M) {
+  var rows = dIdList(M).map(function (k) { return [LV.s + '/' + k.no, k.k, k.id, str(k.r[2]), str(k.r[3]), str(k.r[4]), k.st === 'old' || k.st === 'm3' ? 'ใช้รหัสเดิม' : 'ออกรหัสใหม่', k.st === 'old' || k.st === 'm3' ? k.code : '', k.how === 'ครูยืนยัน' ? 'ครูยืนยัน' : k.how === 'nid' ? 'เลขประจำตัวประชาชน' : k.st === 'm3' ? 'ม.3 เดิม' : '', k.det]; });
+  csv('ส่งงานทะเบียน ' + LV.s + ' ปีการศึกษา ' + M.c.yr, ['ห้อง', 'เลขที่ในห้อง', 'เลขที่สมัคร', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'การดำเนินการ', 'รหัสนักเรียนเดิม', 'ยืนยันด้วย', 'ข้อมูลในทะเบียนเดิม'], rows);
+}
+DOCS.push(['reg', 'บัญชีส่งงานทะเบียน (รหัสเดิม / ออกรหัสใหม่)', 'ส่งงานทะเบียน', 1]);
+DOC_FN.reg = pgReg;
+DOC_DESC.reg = function (M) { var n = dIdList(M).filter(function (k) { return k.st === 'chk'; }).length; return '(1) นักเรียนเดิมพร้อมรหัสเดิม (2) นักเรียนใหม่ที่ต้องออกรหัส · แยกห้องใหม่' + (n ? ' · <b class="bad-t">ยังต้องตรวจ ' + n + ' คน</b>' : ''); };
+DOC_OFF.reg = function (M) { return dIdList(M).some(function (k) { return k.st === 'chk'; }); };
+
+/* ---------- เหตุการณ์ ---------- */
+document.addEventListener('click', function (ev) {
+  var t = ev.target.closest('[data-mx]'); if (!t || t.disabled || V !== 'doc') return;
+  var x = t.dataset.mx, id = t.dataset.wid, M = DM || dModel();
+  switch (x) {
+    case 'read': dmcRead(); return;
+    case 'send': dmcSend(); return;
+    case 'clear': DMC.files = []; DMC.err = ''; render(); return;
+    case 'show': IDSHOW = t.dataset.s; SS.set('idshow', IDSHOW); render(); return;
+    case 'old': dEv('ID', id, '', { d: 'รหัสเดิม ' + t.dataset.code }); return;
+    case 'new': dEv('ID', id, '', { d: 'ออกรหัสใหม่' }); return;
+    case 'own': { var c = prompt('รหัสนักเรียนเดิมของ ' + dName(id) + ' (ตัวเลข 5 หลัก) — ว่างไว้ = ออกรหัสใหม่', ''); if (c === null) return; c = c.replace(/\D/g, '');
+      if (c && !/^\d{4,7}$/.test(c)) { toast('รหัสไม่ถูกต้อง', true); return; } dEv('ID', id, c ? 'ครูใส่รหัสเอง' : '', { d: c ? 'รหัสเดิม ' + c : 'ออกรหัสใหม่' }); return; }
+    case 'csv': dRegCsv(M); return;
+    case 'fix': {
+      var o = (DS.dmc.odd || [])[+t.dataset.i], v = (document.querySelector('[data-mfix="' + t.dataset.i + '"]') || {}).value || '';
+      if (!o) return;
+      if (dact('docDmcFix', { code: o.code, nid4: o.nid4, fix: v.replace(/\D/g, ''), by: DBY }, 'บันทึกรหัสที่ถูกต้อง')) delete DMC.fd[t.dataset.i]; return;
+    }
+  }
+});
+document.addEventListener('input', function (ev) {
+  var t = ev.target; if (V !== 'doc') return;
+  if (t.id === 'idq') { IDQ = t.value.trim(); var l = $('idl'); if (l) { var M = DM || dModel(); l.innerHTML = dIdRows(M, dIdList(M)); } }
+  else if (t.dataset && t.dataset.mterm != null) { var f = DMC.files[+t.dataset.mterm]; if (f) f.term = t.value.trim(); }
+  else if (t.dataset && t.dataset.mfix != null) DMC.fd[t.dataset.mfix] = t.value; // พิมพ์ค้างไว้ไม่หายเมื่อหน้าจอรีเฟรช
+});
+document.addEventListener('toggle', function (ev) { if (ev.target && ev.target.id === 'dmcodd') DMC.oddOpen = ev.target.open; }, true);
+
+window.__m4 = { q: function () { return Q.length; }, off: function () { return OFF; }, paused: function () { return PAUSED; }, state: function () { return D; }, cfg: function () { return CFG; }, dq: function () { return DQ.length; }, doc: function () { return DS; }, model: function () { return dModel(); }, lc: function () { return LC; } }; // สำหรับตรวจสอบระบบ
 /* ---------- เริ่มต้น ---------- */
 (function boot() {
   if (window.__BOOT__) { adopt(window.__BOOT__); start(); persist(); return; } // เปิดผ่าน /exec ในบัญชีเจ้าของ: มีข้อมูลมากับหน้าเว็บแล้ว
