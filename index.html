@@ -110,17 +110,30 @@ select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;backgroun
 .pg .sg{position:absolute;right:12mm;bottom:5mm;font-size:12pt;color:#333}
 .pg .ft{font-size:15pt;margin-top:3mm;line-height:1.5}
 .pg .ft .l{display:flex;justify-content:space-between;gap:4mm}
-.pg.ann{font-size:16pt;line-height:1.22;padding:10mm 20mm 10mm 30mm;outline:none}
-.pg.ann .crest{display:block;height:30mm;margin:4mm auto 5mm}
-.pg.ann .h{text-align:center;font-weight:700;line-height:1.25}
-.pg.ann .rule{text-align:center;letter-spacing:.5mm;margin:0 0 3mm;color:#000}
-.pg.ann p{margin:0 0 1.5mm;text-indent:25mm}
-.pg.ann ol{list-style:none;margin:1mm 0 0 25mm;padding:0}
-.pg.ann li{padding-left:7mm;text-indent:-7mm;margin:0 0 .4mm}
 .cnb{white-space:nowrap}
-.pg.ann p,.pg.ann li{text-wrap:pretty}
-.pg.ann .dl{margin:10mm 0 0 32mm}
-.pg.ann .sb{margin:22mm 0 0 66mm;text-align:center;width:80mm}
+/*COVCSS-BEGIN*/
+/* หน้าประกาศแรก (section.pg.cov) — แบบเดียวกันทุกระบบ ตามประกาศจริงที่ผู้ใช้เลือก (8 ต.ค. 69) และไฟล์ Word ของโรงเรียน
+   ต้นฉบับ: ระบบรับนักเรียน/_สำหรับพัฒนา/หน้าประกาศ_ร่วม/cover.css · ติดตั้งด้วย ติดตั้ง_หน้าประกาศ.py ในโฟลเดอร์เดียวกัน
+   A4 · ขอบซ้าย 30 มม. ขวา 20 มม. · ครุฑกึ่งกลาง กรอบภาพสูง 32 มม. (ตัวครุฑราว 28 มม. เท่าประกาศจริง หมึกเริ่มราว 15 มม. จากขอบบน)
+   · 16 pt ระยะบรรทัด 6.3 มม. (= Word "บรรทัดเดียว")
+   ชื่อประกาศ 18 pt หนา · เรื่อง/ประเภท 16 pt หนา · เส้นจุดคั่น · ย่อหน้าและข้อเว้น 12.5 มม. บรรทัดถัดไปชิดขอบซ้าย (ข้อย่อย 20 มม.)
+   ข้อความจัด "กระจายแบบไทย" ด้วย ddn_just.js · ประกาศ ณ วันที่ เว้นก่อน 6 pt เยื้อง 31.5 มม. · เว้น 4 บรรทัดลงนาม กึ่งกลางที่ 84 มม.
+   · ท้ายหน้า /บัญชีประกาศแนบท้าย... ชิดขวา */
+.pg.cov{padding:12.5mm 20mm 12mm 30mm;font-size:16pt;line-height:1.116;outline:none}
+.pg.cov .ccrest,.pg.cov .crest{display:block;height:32mm;width:auto;margin:0 auto 1.4mm}
+.pg.cov .ch,.pg.cov .h{text-align:center;font-weight:700;line-height:1.116;margin:0}
+.pg.cov .ch1,.pg.cov .h1{font-size:18pt}
+.pg.cov .cdots,.pg.cov .rule{text-align:center;white-space:nowrap;overflow:hidden;letter-spacing:0;margin:0;line-height:1.116;color:#000}
+.pg.cov p,.pg.cov .cit,.pg.cov li{margin:0;padding:0;text-indent:12.5mm;text-align:left;text-wrap:wrap}
+.pg.cov .cit.csub,.pg.cov li.sub{text-indent:20mm}
+.pg.cov ol,.pg.cov ul{list-style:none;margin:0;padding:0}
+.pg.cov p.rl{text-indent:0;padding-left:12.5mm}
+.pg.cov .cdl,.pg.cov .dl{margin:2.1mm 0 0 31.5mm;padding:0;white-space:nowrap;display:block}
+.pg.cov .csb,.pg.cov .sb{margin:25.2mm 0 0 44mm;width:80mm;text-align:center}
+.pg.cov .cnx{text-align:right;margin:6.3mm 0 0}
+.pg.cov .tj-l{display:block;white-space:nowrap;text-indent:0}
+.pg.cov .tj-z{letter-spacing:0}
+/*COVCSS-END*/
 .pg .note{font-size:13pt;color:#333}
 .pg h3{font-size:16pt;margin:4mm 0 1.5mm}
 @media (max-width:760px){.fgrid{grid-template-columns:1fr 1fr}.wl .it{grid-template-columns:40px minmax(0,1fr) auto}.wl .it .hide-m{display:none}}
@@ -1518,9 +1531,9 @@ function nm3(r, tail) { return '<td class="n1">' + esc(str(r[2])) + '</td><td cl
 function typ1(r) { return LV.tyCells(r); } // ช่องประเภทในบัญชีแนบท้าย (ม.4 = ม.3 เดิม/ทั่วไป · ม.1 = เขต + ประเภท) แบบประกาศปี 69
 function pgAnn(M) {
   var c = M.c, yr = c.yr ? esc(c.yr) : dots(6), b = function (s) { return '<b>' + s + '</b>'; };
-  return '<section class="pg ann" contenteditable="true" spellcheck="false">' +
+  return '<section class="pg ann cov" contenteditable="true" spellcheck="false">' +
     '<img class="crest" alt="" src="' + CREST + '" contenteditable="false">' +
-    '<div class="h">ประกาศโรงเรียนดัดดรุณี</div>' +
+    '<div class="h h1">ประกาศโรงเรียนดัดดรุณี</div>' +
     '<div class="h">เรื่อง&nbsp; ประกาศผลสอบคัดเลือกเข้าศึกษาต่อชั้นมัธยมศึกษาปีที่ ' + LV.n + ' ประจำปีการศึกษา ' + yr + '</div>' +
     '<div class="h">ประเภท&nbsp; ห้องเรียนปกติ</div>' +
     '<div class="rule">.......................................................................................</div>' +
@@ -1536,7 +1549,7 @@ function pgAnn(M) {
     '<li>6)&nbsp; รายชื่อสำรองให้รอการติดต่อจากทางโรงเรียนเท่านั้น ตามเบอร์โทรศัพท์ที่ให้กับทางโรงเรียนไว้</li>' +
     '<li>7)&nbsp; ศึกษารายละเอียดอื่น ๆ จากประกาศแนบท้ายนี้</li></ol>' +
     '<div class="dl">ประกาศ ณ วันที่ ' + (dTh(c.dAnn, 'ann') ? esc(dTh(c.dAnn, 'ann')) : '........ เดือน .......................... พ.ศ. ..........') + '</div>' +
-    '<div class="sb">(' + esc(c.dir) + ')<br>' + esc(c.dirPos) + '</div></section>';
+    '<div class="sb">(' + esc(c.dir) + ')<br>' + esc(c.dirPos) + '</div><div class="cnx">/บัญชีประกาศแนบท้าย...</div></section>';
 }
 function pgList(M, list, o) { // บัญชีรายชื่อแบบตาราง แบ่งหน้าอัตโนมัติ (หัวตารางซ้ำทุกหน้า)
   var pp = chunks(list, o.first || 42, o.rest || 46), lim = pp.length === 1 ? (o.first || 42) : (o.rest || 46), extra = o.tail && pp[pp.length - 1].length > lim - 9;
@@ -1679,7 +1692,9 @@ var DOC_FN = { ann: function (M) { return pgAnn(M) + pgAx1(M) + (M.res.length ? 
 /** ขึ้นบรรทัดใหม่แบบหนังสือราชการ: ไม่ฉีกวลี (ปีการศึกษา · วันที่ … · ชั้นมัธยมศึกษาปีที่ n) ไม่ทิ้งคำเดียวท้ายย่อหน้า · ใช้ span.cnb (nowrap) ไม่แทรกอักขระซ่อน */
 var NB_RE = /(ชั้นมัธยมศึกษาปีที่\s*[\d๐-๙]*|ปีการศึกษา(?:\s*[\d๐-๙]+)?|(?:เมื่อ|ใน)?วันที่\s*[\d๐-๙]+\s*[^\s\d๐-๙<>,.]+\s*[\d๐-๙]{4}|จำนวน\s*[\d๐-๙]+\s*คน|เวลา\s*[\d๐-๙.:]+\s*(?:–|-)?\s*[\d๐-๙.:]*\s*น\.|บัญชีแนบท้าย\s*\([\d๐-๙]+\)|ห้องเรียน(?:พิเศษ|ปกติ)|โรงเรียนดัดดรุณี|สละสิทธิ์|ผ่านการ(?:สอบ)?คัดเลือก)/g;
 var SEG = (typeof Intl !== 'undefined' && Intl.Segmenter) ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
+var FLOWJ = false; // true ระหว่างเตรียมย่อหน้าที่ ddn_just.js จะจัดกระจายแบบไทย → ไม่ผูกคำสั้น (ตัวจัดบรรทัดเลือกจุดตัดเอง)
 function addPlain(host, s) {
+  if (FLOWJ) { if (s) host.appendChild(document.createTextNode(s)); return; }
   if (!SEG || !s) { if (s) host.appendChild(document.createTextNode(s)); return; }
   var sg = Array.from(SEG.segment(s)), buf = '', i = 0;
   var flush = function () { if (buf) { host.appendChild(document.createTextNode(buf)); buf = ''; } };
@@ -1716,13 +1731,539 @@ function flow(root) {
   [].slice.call(root.querySelectorAll('.pg.ann p, .pg.ann .h, .pg.ann li')).forEach(function (el) {
     var tx = [], wk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), n;
     while ((n = wk.nextNode())) if (n.nodeValue.trim()) tx.push(n);
+    FLOWJ = typeof DDNJUST !== 'undefined' && DDNJUST.ok && el.matches(DDNJUST.sel);
     tx.forEach(function (n, i) { flowTxt(n, i === tx.length - 1); });
   });
+  FLOWJ = false;
+  if (typeof DDNJUST !== 'undefined') DDNJUST.run(root); // จัดบรรทัดกระจายแบบไทย (ddn_just.js) — ย่อหน้าที่ยังซ่อนอยู่จะจัดเมื่อแสดง
 }
+/*JUST-BEGIN*/
+/* จัดบรรทัด "กระจายแบบไทย" (เหมือน Word: การกระจายแบบไทย / Thai Distributed) บนหน้าประกาศ — ใช้ร่วมกันทุกระบบ
+   ต้นฉบับ: ระบบรับนักเรียน/_สำหรับพัฒนา/หน้าประกาศ_ร่วม/ddn_just.js · ติดตั้งด้วย ติดตั้ง_หน้าประกาศ.py ในโฟลเดอร์เดียวกัน
+   - ทุกบรรทัดที่เต็มชิดขอบซ้าย-ขวาเสมอกัน โดยเพิ่มช่องไฟระหว่างตัวอักษรเท่ากันทั้งบรรทัด · บรรทัดสุดท้ายของย่อหน้าชิดซ้ายตามปกติ
+   - ตัดบรรทัดที่ขอบเขตคำไทย (Intl.Segmenter) และเว้นวรรค · ไม่ตัดกลางคำประสม (ดำเนินการ ตรวจสอบ รายชื่อ …)
+     ไม่ฉีกวลีใน span.nb/.cnb (white-space:nowrap) · ตัวเลขอยู่กับคำหน้าเมื่อทำได้ · ณ การ ความ ผู้ นาย นาง ไม่ค้างท้ายบรรทัด
+     ไว้ แล้ว นี้ นั้น ๆ ฯ และวงเล็บ/เครื่องหมายปิด ไม่ขึ้นต้นบรรทัด
+   - เลือกจุดตัดของทั้งย่อหน้า: จำนวนบรรทัดน้อยที่สุดก่อน แล้วให้ช่องไฟของทุกบรรทัดสม่ำเสมอที่สุด (ตัดที่เว้นวรรคได้ดีกว่า)
+   - แตะแก้ข้อความ: คลิก/เลือกข้อความได้ตามปกติ · เมื่อเริ่มพิมพ์ วาง ตัด ลาก ทั้งหน้าประกาศกลับเป็นข้อความปกติ (ชิดซ้าย) ระหว่างแก้
+     คลิกนอกหน้าประกาศ / กดพิมพ์ / ดาวน์โหลด Word แล้วจัดใหม่เอง · ย้อนกลับ (Ctrl+Z) ได้ระหว่างแก้ แต่ไม่ข้ามการจัดใหม่
+     (จัดใหม่หลังแก้ = สลับหน้าประกาศเป็นสำเนา ประวัติย้อนกลับเดิมของเบราว์เซอร์จึงไม่ย้อนข้อความเก่ามาซ้ำ/เพี้ยน)
+   - เบราว์เซอร์เก่าที่ไม่มี Intl.Segmenter หรือเติมช่องไฟแยกสระ/วรรณยุกต์ (Safari บางรุ่น): ปล่อยชิดซ้ายเหมือนเดิม (ไม่มีข้อผิดพลาด) */
+var DDNJUST = (function () {
+  'use strict';
+  var W = typeof window !== 'undefined' ? window : null, D = W ? W.document : null;
+  var OK = !!(W && W.Intl && W.Intl.Segmenter && D && D.createRange && D.createTreeWalker && W.Element && W.Element.prototype.closest);
+  var SEGW = OK ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
+  var SEGG = OK ? new Intl.Segmenter('th', { granularity: 'grapheme' }) : null;
+  var SEL = '.pg.cov p, .pg.cov .cit, .pg.cov li, .pg .tj';                  // ย่อหน้าที่จัดกระจายแบบไทย (หน้าประกาศแรก section.pg.cov)
+  var TH = /[ก-๏]/;                                                          // อักษรไทย สระ วรรณยุกต์ (ไม่รวมเลขไทย)
+  var NOSTART = /^[ๆฯ)\]}”’,.:;!?%…–]/;                                     // ห้ามขึ้นต้นบรรทัด
+  var NOEND = /[(\[{“‘]$/;                                                   // ห้ามจบบรรทัด
+  var NUM = /^(?:[0-9๐-๙]|\([0-9๐-๙]+\))/;                                   // ตัวเลข / (1) ต่อจากคำหน้า
+  var UNIT = /^(?:น\.|คน|ราย|คะแนน|บาท|นาที|ชั่วโมง)(?![ก-๎])/;                // หน่วยหลังตัวเลข ไม่ขึ้นต้นบรรทัด
+  var TAIL = /^(?:ไว้|แล้ว|นี้|นั้น|กัน)(?![ก-๎])/;                             // คำท้ายที่ไม่ขึ้นต้นบรรทัด (กำหนด|ไว้ · ประกาศ|นี้)
+  var PRE = /^(?:การ|ความ|ผู้|นาย|นาง|นางสาว|เด็กชาย|เด็กหญิง)$/;                // คำนำหน้าที่ไม่ค้างท้ายบรรทัด (การ|รับ · ผู้|มีสิทธิ์ · นาย|ชื่อ)
+  /** คำประสมที่ไม่ตัดกลางคำ (ตัวตัดคำของเบราว์เซอร์แยกละเอียดกว่า Word เช่น ดำเนิน|การ ตรวจ|สอบ ราย|ชื่อ ตา|มระเบียบ) */
+  var COMP = new RegExp(('ดำเนินการ ตรวจสอบ รายชื่อ แนบท้าย รวมทั้งสิ้น รวมทั้ง ทั้งสิ้น ปีการศึกษา สอบคัดเลือก คัดเลือก สละสิทธิ์ มีสิทธิ์ ' +
+    'ยืนยันสิทธิ์ ดังนั้น ดังกล่าว ครบถ้วน ถูกต้อง รายละเอียด เป็นไป ผลปรากฏ เสร็จสิ้น ประมวลผล รับสมัคร เข้าเรียน ' +
+    'เข้าศึกษา ศึกษาต่อ เข้าสอบ จัดกลุ่ม ข้อใดข้อหนึ่ง ความจำนง รายงานตัว เพิ่มเติม บัญชีสำรอง แบ่งเป็น ลำดับที่ เลขที่ ' +
+    'สมัครสอบ หมายเลข ห้องสอบ สถานที่ ช่วงเวลา เป็นต้นไป ติดต่อ เบอร์โทรศัพท์ โทรศัพท์ แต่งกาย กาลเทศะ ตามระเบียบ ระเบียบ ' +
+    'บัตรประจำตัว ผู้เข้าสอบ ดินสอดำ ยางลบ เครื่องมือ สื่อสาร บันทึกภาพ บันทึกเสียง อิเล็กทรอนิกส์ ดิจิทัล อื่นใด ' +
+    'นอกเหนือจาก นอกเหนือ ทุกชนิด ไม่อนุญาต ไม่เกิน มาถึง ภายใน นำเข้า ขึ้นไป ประกาศผล ผลสอบ คณะกรรมการ กรรมการ เรียบร้อย ' +
+    'ตามที่ รายชื่อสำรอง ผู้ปกครอง ผู้อำนวยการ โรงเรียนเดิม ห้องเรียน มัธยมศึกษา ประถมศึกษา วัตถุประสงค์ ทดแทน แผนการเรียน ' +
+    'ผ่านการสอบคัดเลือก ผ่านการคัดเลือก ผ่านเกณฑ์ เกณฑ์ ประจำตัว ชื่อ-สกุล ชื่อ-นามสกุล นามสกุล ประเภท พิจารณา คุณสมบัติ ' +
+    'เว็บไซต์ จำนวน ข้อมูล เอกสาร หลักฐาน ประชาชน ภาคเรียน ผลการเรียน เฉลี่ย สะสม ยกเว้น ทั้งนี้ อนึ่ง เนื่องจาก ' +
+    'โรงเรียนดัดดรุณี ดัดดรุณี วันที่ ปีที่ ครั้งที่ ห้องเรียนพิเศษ ห้องเรียนปกติ แม่นธนู อเนกประสงค์ พื้นที่บริการ ' +
+    'เครื่องบันทึกภาพ เครื่องบันทึกเสียง เครื่องมือสื่อสาร สิ่งแวดล้อม เทคโนโลยี วิทยาศาสตร์ คณิตศาสตร์ ภาษาอังกฤษ ' +
+    'ภาษาต่างประเทศ ภาษาจีน ภาษาญี่ปุ่น')
+    .split(' ').sort(function (a, b) { return b.length - a.length; }).join('|').replace(/-/g, '\\-'), 'y'); // y = ตรวจทีละตำแหน่ง (คำซ้อนกันได้ เช่น ประจำปีการศึกษา)
+  var MAXLS = 0.15;  // ช่องไฟที่เพิ่มได้สูงสุด (เท่าของขนาดตัวอักษร) — เกินนี้บรรทัดนั้นชิดซ้ายแทน (เกิดได้เฉพาะคำยาวมากที่ตัดไม่ได้)
+  /** สไตล์ที่ตัวจัดบรรทัดต้องการ (ไม่พึ่ง CSS ของหน้า): ระหว่างวัด/ในบรรทัดที่จัดแล้ว ห้ามตัดบรรทัดในชิ้นย่อย (ตัวหนา ข้อความที่วาง ฯลฯ) */
+  var CSS = '.tj-meas,.tj-meas *,.tj-l,.tj-l *{white-space:nowrap!important}.tj-l{display:block!important;text-indent:0!important}.tj-z{letter-spacing:0!important}' +
+    '.tj-editing p *,.tj-editing .cit *,.tj-editing li *{white-space:normal!important}'; // ระหว่างแก้ ให้ตัดบรรทัดได้ทุกที่ (พิมพ์ต่อท้ายวลีห้ามฉีกไม่ล้นขอบ)
+  /** สไตล์จัดหน้าที่อาจติดมากับข้อความเมื่อแก้ข้ามย่อหน้า/วางข้อความ → ลบทิ้งก่อนจัด */
+  var LEAK = ['letter-spacing', 'white-space', 'white-space-collapse', 'text-wrap', 'text-wrap-mode', 'text-indent', 'display', 'margin-left', 'width', 'text-align'];
+  var NID = 0, KEY = 0, FONTWAIT = false, PRINT = null, LSOK = null;
+
+  function px(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  /** เบราว์เซอร์เติมช่องไฟ (letter-spacing) ทีละกลุ่มอักษรหรือไม่ — WebKit/Safari บางรุ่นเติมทุก glyph รวมสระ/วรรณยุกต์
+      (สระอำแยก ตัวอักษรเพี้ยน: WebKit bug 236477) → ถ้าเติมผิด ไม่จัด ปล่อยชิดซ้ายตามเดิม · วัดครั้งเดียวแล้วจำ */
+  function lsOK() {
+    if (LSOK !== null) return LSOK;
+    if (!OK || !D.body) return true;                                  // ยังวัดไม่ได้ (ไม่จำผล)
+    if (W.__ddnJustNoLS) return (LSOK = false);                       // ใช้ทดสอบทางเลือกนี้
+    var p = D.createElement('span');
+    p.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;font-size:40px;letter-spacing:0;padding:0;border:0;margin:0';
+    p.textContent = 'กี้กำกี้กำ';                                        // 4 กลุ่มอักษร 12 glyph
+    D.body.appendChild(p);
+    var w0 = p.getBoundingClientRect().width; p.style.letterSpacing = '10px';
+    var w1 = p.getBoundingClientRect().width; D.body.removeChild(p);
+    if (!(w0 > 0)) return true;                                       // ยังไม่แสดงผล วัดใหม่ครั้งหน้า
+    return (LSOK = (w1 - w0) / 10 < 4.8);                             // ถูก = 3–4 ช่อง · เติมทุก glyph = 6–12 ช่อง
+  }
+  function isWS(c) { return c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f'; }
+  function css() {
+    if (D.getElementById('ddn-just-css')) return;
+    var st = D.createElement('style'); st.id = 'ddn-just-css'; st.textContent = CSS;
+    (D.head || D.documentElement).appendChild(st);
+  }
+  function unwrap(x) { var p = x.parentNode; if (!p) return; while (x.firstChild) p.insertBefore(x.firstChild, x); p.removeChild(x); }
+
+  /** อ่านข้อความในย่อหน้าเป็นสายอักษรเดียว (ยุบเว้นวรรคแบบ CSS) พร้อมตำแหน่งใน DOM ของทุกตัว · <br> = '\n'
+      NW = เลขกลุ่มของชิ้นที่ห้ามตัดบรรทัด (white-space:nowrap ของชิ้นนั้นเอง — อ่านก่อนเข้าโหมดวัด) */
+  function scan(el) {
+    var S = [], M = [], NW = [], sp = true, bad = false;
+    (function walk(node, nw, pre) {
+      for (var c = node.firstChild; c && !bad; c = c.nextSibling) {
+        if (c.nodeType === 3) {
+          var t = c.nodeValue;
+          for (var k = 0; k < t.length; k++) {
+            var ch = t.charAt(k);
+            if (!pre && isWS(ch)) { if (sp) continue; ch = ' '; sp = true; } else sp = false;
+            S.push(ch); M.push([c, k]); NW.push(nw);
+          }
+        } else if (c.nodeType === 1) {
+          if (c.tagName === 'BR') { S.push('\n'); M.push([c, -1]); NW.push(0); sp = true; continue; }
+          var cs = getComputedStyle(c);
+          if (cs.display === 'none') continue;
+          if (!/^inline/.test(cs.display) || c.tagName === 'IMG') { bad = true; return; }
+          var ws = cs.whiteSpace || '';
+          walk(c, nw || (/nowrap|pre/.test(ws) ? ++NID : 0), pre || /^pre/.test(ws));
+        }
+      }
+    })(el, 0, /^pre/.test(getComputedStyle(el).whiteSpace || ''));
+    return bad ? null : { S: S.join(''), M: M, NW: NW };
+  }
+
+  /** จุดที่ขึ้นบรรทัดใหม่ได้ ok[i] (ก่อนอักษรตำแหน่ง i): 1 = ได้ · 2 = ต้องขึ้น (หลัง <br>) · 3 = ได้แต่ไม่ค่อยดี (ใช้เมื่อช่วยไม่ให้บรรทัดห่างเกิน) */
+  function breaks(m) {
+    var S = m.S, n = S.length, ok = new Uint8Array(n + 1), wb = {}, seg = [];
+    Array.from(SEGW.segment(S)).forEach(function (g) { wb[g.index] = 1; seg.push(g); });
+    for (var i = 1; i < n; i++) {
+      var c1 = S.charAt(i - 1), c2 = S.charAt(i);
+      if (c1 === '\n') { ok[i] = 2; continue; }
+      if (c2 === ' ' || c2 === '\n') continue;
+      if (m.NW[i - 1] && m.NW[i - 1] === m.NW[i]) continue;           // อยู่ในวลีห้ามฉีก
+      var rest = S.slice(i, i + 12), head = S.slice(Math.max(0, i - 12), i);
+      if (NOSTART.test(rest) || NOEND.test(head.replace(/ $/, '')) || TAIL.test(rest)) continue;
+      if ((c2 === '"' || c2 === "'") && c1 !== ' ') continue;         // อัญประกาศตรงตัวปิด ไม่ขึ้นต้นบรรทัด
+      if ((c1 === '"' || c1 === "'") && (i < 2 || S.charAt(i - 2) === ' ')) continue; // อัญประกาศตรงตัวเปิด ไม่จบบรรทัด
+      if (c1 === ' ') {
+        if (UNIT.test(rest) && /[0-9๐-๙.] $/.test(head)) continue;    // 09.00 น. · 356 คน
+        ok[i] = NUM.test(rest) || /(?:^|[^ก-๎])ณ $/.test(head) ? 3 : 1; // ตัวเลขแยกจากคำหน้า (ข้อ|1 · ไม่เกิน|08.00) · ณ ท้ายบรรทัด = ไม่ค่อยดี
+        continue;
+      }
+      if (wb[i] && TH.test(c1) && TH.test(c2)) ok[i] = 1;            // ขอบเขตคำไทย
+    }
+    for (var p = 0; p < n; p++) { // คำประสม: ห้ามตัดภายในคำ
+      COMP.lastIndex = p; var x = COMP.exec(S);
+      if (x) for (var j = p + 1; j < p + x[0].length; j++) if (ok[j] !== 2) ok[j] = 0;
+    }
+    seg.forEach(function (g) { // การ ความ ผู้ นาย … ที่ขึ้นต้นคำ ผูกกับคำถัดไป (ไม่ผูกเมื่อเป็นท้ายคำประสม เช่น ดำเนินการ)
+      var e = g.index + g.segment.length;
+      if (PRE.test(g.segment) && e < n && TH.test(S.charAt(e)) && ok[e] === 1 && (g.index === 0 || ok[g.index] || S.charAt(g.index - 1) === ' ')) ok[e] = 0;
+    });
+    return ok;
+  }
+
+  /** หน่วยที่ตัดไม่ได้ระหว่างจุดตัด: a..b-1 · e = ท้ายส่วนที่มองเห็น (ไม่รวมเว้นวรรค/<br>) · f = จบด้วย <br> · q = ชนิดจุดตัดหลังหน่วย */
+  function units(m, ok) {
+    var S = m.S, n = S.length, out = [], a = 0;
+    for (var i = 1; i <= n; i++) {
+      if (i === n || ok[i]) {
+        var e = i, f = S.charAt(i - 1) === '\n';
+        if (f) e--;
+        while (e > a && S.charAt(e - 1) === ' ') e--;
+        out.push({ a: a, b: i, e: e, f: f, q: i < n ? ok[i] : 0 });
+        a = i;
+      }
+    }
+    return out;
+  }
+
+  function pt(m, i, after) { // จุดใน DOM ก่อน/หลังอักษรตำแหน่ง i
+    var x = m.M[i];
+    if (x[1] >= 0) return [x[0], x[1] + (after ? 1 : 0)];
+    var p = x[0].parentNode, j = [].indexOf.call(p.childNodes, x[0]);
+    return [p, j + (after ? 1 : 0)];
+  }
+  function rng(a, b) { var r = D.createRange(); r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); return r; }
+  function width(m, a, e) { return e <= a ? 0 : rng(pt(m, a, false), pt(m, e - 1, true)).getBoundingClientRect().width; }
+  function zoomOf(el) { // หน่วยบนจอต่อ 1px ของ CSS (หน้าตัวอย่างบนมือถือย่อด้วย CSS zoom)
+    var p = D.createElement('span'); p.style.cssText = 'display:inline-block;width:100px;height:1px;padding:0;border:0;margin:0';
+    el.appendChild(p); var k = p.getBoundingClientRect().width / 100; el.removeChild(p);
+    return k > 0.05 ? k : 1;
+  }
+
+  /** เลือกจุดตัดบรรทัด: จำนวนบรรทัดน้อยที่สุดก่อน แล้วรวม (ช่องว่างท้ายบรรทัด/ความกว้าง)³ ของบรรทัดที่ไม่ใช่บรรทัดสุดท้ายให้น้อยที่สุด
+      คืน null ถ้ามีหน่วยที่ยาวเกินบรรทัด (ปล่อยให้เบราว์เซอร์จัดเอง ไม่ให้ล้นขอบ) */
+  function plan(U, A0, A) {
+    var n = U.length, best = [], prev = [], EPS = 0.6;
+    for (var u = 0; u < n; u++) if (U[u].w > Math.max(A0, A) + EPS) return null;
+    for (var x = 0; x <= n; x++) best[x] = Infinity;
+    best[0] = 0;
+    for (var i = 0; i < n; i++) {
+      if (best[i] === Infinity) continue;
+      var av = i === 0 ? A0 : A, w = 0;
+      for (var j = i; j < n; j++) {
+        w += (j > i ? U[j - 1].s : 0) + U[j].w;
+        if (w > av + EPS && j > i) break;
+        var last = j === n - 1 || U[j].f, r = Math.max(0, av - w) / av;
+        var c = best[i] + 1e6 + (last ? 0 : 1000 * r * r * r + (U[j].q === 3 ? 1 : U[j].e < U[j].b ? 0 : 0.3)); // ตัดที่เว้นวรรคดีกว่าตัดกลางวลีเล็กน้อย · จุดไม่ค่อยดี = เท่าบรรทัดห่าง 10%
+        if (c < best[j + 1]) { best[j + 1] = c; prev[j + 1] = i; }
+        if (U[j].f) break;
+      }
+    }
+    if (best[n] === Infinity) return null;
+    var cut = [], k = n;
+    while (k > 0) { cut.unshift(prev[k]); k = prev[k]; }
+    return cut; // ดัชนีหน่วยแรกของแต่ละบรรทัด
+  }
+
+  function lastCluster(line) { // ห่อกลุ่มอักษรสุดท้ายของบรรทัดด้วย span.tj-z (ไม่เติมช่องไฟหลังตัวสุดท้าย)
+    var tw = D.createTreeWalker(line, NodeFilter.SHOW_TEXT, null), n, last = null;
+    while ((n = tw.nextNode())) if (/[^ \t\n\r\f]/.test(n.nodeValue)) last = n;
+    if (!last) return false;
+    var t = last.nodeValue, end = t.length;
+    while (end > 0 && isWS(t.charAt(end - 1))) end--;
+    var gs = Array.from(SEGG.segment(t.slice(0, end))), g = gs[gs.length - 1];
+    if (!g) return false;
+    if (end < t.length) last.splitText(end);
+    var z = g.index > 0 ? last.splitText(g.index) : last;
+    var sp = D.createElement('span'); sp.className = 'tj-z'; sp.style.letterSpacing = '0';
+    z.parentNode.insertBefore(sp, z); sp.appendChild(z);
+    return true;
+  }
+  function gaps(line) { var t = line.textContent.replace(/[ \t\n\r\f]+/g, ' ').replace(/^ | $/g, ''); return t ? Array.from(SEGG.segment(t)).length - 1 : 0; }
+
+  /** ล้างชิ้นที่ค้างจากการแก้ข้ามย่อหน้า/วางข้อความ: บรรทัดหรือย่อหน้าที่จัดแล้วซ้อนอยู่ข้างใน และสไตล์จัดหน้าที่ติดมา */
+  function clean(el) {
+    [].slice.call(el.querySelectorAll('.tj-l, .tj-z, .tj-on, .tj-edit')).forEach(unwrap);
+    [].forEach.call(el.querySelectorAll('[style]'), function (x) {
+      LEAK.forEach(function (p) { x.style.removeProperty(p); });
+      if (!x.getAttribute('style')) x.removeAttribute('style');
+    });
+    [].forEach.call(el.querySelectorAll('[data-tjk]'), function (x) { x.removeAttribute('data-tjk'); });
+    el.normalize();
+  }
+
+  /** จัดย่อหน้า el แบบกระจายแบบไทย (คืน true ถ้าจัดแล้ว) */
+  function justify(el) {
+    if (!OK || !el || !el.isConnected || !lsOK()) return false;
+    if (el._tj || el.querySelector('.tj-l')) plain(el);
+    el.classList.remove('tj-edit');
+    if (el.closest('.tj-editing')) return false;                     // กำลังแก้ข้อความในหน้านี้
+    var cs = getComputedStyle(el);
+    if (/center|right|end/.test(cs.textAlign)) return false;
+    css(); clean(el);
+    var m = null, U = null, k = 1, res = null;
+    try { m = scan(el); } catch (e) { m = null; }                    // อ่านก่อนเข้าโหมดวัด (ให้รู้ชิ้นที่ห้ามตัดจริง ๆ)
+    if (!m || !/[^ \n]/.test(m.S)) return false;
+    [].forEach.call(el.querySelectorAll('*'), function (x) { x.setAttribute('data-tjk', String(++KEY)); });
+    el.classList.add('tj-meas');                                     // วัดความกว้างทุกหน่วยบนบรรทัดเดียว
+    try {
+      k = zoomOf(el);
+      var cw = el.getBoundingClientRect().width / k - px(cs.paddingLeft) - px(cs.paddingRight) - px(cs.borderLeftWidth) - px(cs.borderRightWidth);
+      var ti = px(cs.textIndent), full = Math.max(cw, cw - ti) + 0.6;
+      var mk = function () { U = units(m, breaks(m)); U.forEach(function (u) { u.w = width(m, u.a, u.e) / k; u.s = u.e < u.b && !u.f ? width(m, u.e, u.e + 1) / k : 0; }); };
+      mk();
+      var wide = {}; // วลีห้ามฉีกที่ยาวเกินบรรทัด (เช่น พิมพ์ต่อท้ายวลีท้ายย่อหน้า) → ยอมให้ตัดภายในวลีนั้น
+      U.forEach(function (u) { if (u.w > full) for (var i = u.a; i < u.e; i++) if (m.NW[i]) wide[m.NW[i]] = 1; });
+      if (Object.keys(wide).length) { m.NW = m.NW.map(function (x) { return wide[x] ? 0 : x; }); mk(); }
+      var cut = cw > 20 ? plan(U, cw - ti, cw) : null;
+      if (cut) res = { cw: cw, ti: ti, cut: cut };
+    } catch (e) { res = null; if (W.console) console.warn('DDNJUST', e); }
+    el.classList.remove('tj-meas');
+    if (!res || res.cut.length < 2) { strip(el); return false; } // บรรทัดเดียว / มีคำยาวเกินบรรทัด → ไม่ต้องจัด
+    // สร้างบรรทัด: ตัดช่วงจาก DOM เดิมทีละบรรทัด (cloneContents คงตัวหนา/วลีห้ามฉีกไว้ ข้อความทุกตัวอักษรเหมือนเดิม)
+    var cut = res.cut, lines = [], fs = px(cs.fontSize) || 16;
+    for (var L = 0; L < cut.length; L++) {
+      var a = L === 0 ? [el, 0] : pt(m, U[cut[L]].a, false);
+      var b = L === cut.length - 1 ? [el, el.childNodes.length] : pt(m, U[cut[L + 1]].a, false);
+      var j = (L === cut.length - 1 ? U.length : cut[L + 1]) - 1;
+      var rr = rng(a, b), fr = rr.cloneContents(), ca = rr.commonAncestorContainer;
+      if (ca.nodeType !== 1) ca = ca.parentNode;
+      for (; ca && ca !== el; ca = ca.parentNode) { // บรรทัดที่อยู่ในชิ้นเดียวทั้งบรรทัด (เช่น ตัวหนายาว 3 บรรทัด บรรทัดกลาง): cloneContents ไม่ติดตัวครอบมา → ครอบกลับ
+        var wr = ca.cloneNode(false); wr.appendChild(fr); fr = D.createDocumentFragment(); fr.appendChild(wr);
+      }
+      lines.push({ frag: fr, last: L === cut.length - 1 || U[j].f, av: L === 0 ? res.cw - res.ti : res.cw });
+    }
+    while (el.firstChild) el.removeChild(el.firstChild);
+    lines.forEach(function (ln, L) {
+      var sp = D.createElement('span'); sp.className = 'tj-l';
+      sp.style.cssText = 'display:block;white-space:nowrap;text-indent:0' + (L === 0 && res.ti ? ';margin-left:' + res.ti.toFixed(3) + 'px' : '');
+      sp.appendChild(ln.frag); el.appendChild(sp); ln.el = sp;
+      ln.n = !ln.last && lastCluster(sp) ? gaps(sp) : 0;
+    });
+    // ช่องไฟ: วัดความกว้างจริงของแต่ละบรรทัด → เติมช่องไฟเท่ากันทุกตัวให้พอดีขอบขวา → วัดซ้ำแล้วปรับให้ตรงอีกครั้ง
+    var meas = function (ln) { var r = D.createRange(); r.selectNodeContents(ln.el); return r.getBoundingClientRect().width / k; };
+    lines.forEach(function (ln) { if (ln.n > 0) ln.w0 = meas(ln); });
+    lines.forEach(function (ln) {
+      if (!(ln.n > 0)) return;
+      ln.ls = (ln.av - ln.w0) / ln.n;
+      if (ln.ls > MAXLS * fs || ln.ls < -0.03 * fs) { ln.n = 0; return; }
+      ln.el.style.letterSpacing = ln.ls.toFixed(3) + 'px';
+    });
+    lines.forEach(function (ln) { if (ln.n > 0) ln.w1 = meas(ln); });
+    lines.forEach(function (ln) {
+      if (!(ln.n > 0) || !(ln.w1 - ln.w0 > 0.01)) return;
+      var ls = ln.ls * (ln.av - ln.w0) / (ln.w1 - ln.w0);
+      if (Math.abs(ls - ln.ls) > 0.0005) ln.el.style.letterSpacing = ls.toFixed(3) + 'px';
+    });
+    el._tj = { lines: lines.length };
+    el.classList.add('tj-on');
+    if (D.fonts && D.fonts.status === 'loading' && !FONTWAIT) { // ฟอนต์ยังโหลดไม่เสร็จ → จัดใหม่เมื่อโหลดเสร็จ
+      FONTWAIT = true;
+      D.fonts.ready.then(function () { FONTWAIT = false; var sv = saveSel(); [].forEach.call(D.querySelectorAll('.tj-on'), function (x) { safe(x); }); restoreSel(sv); });
+    }
+    return true;
+  }
+
+  /** เลิกจัด: รวมบรรทัดกลับเป็นข้อความเดิม (ทุกตัวอักษรเหมือนเดิม) · keep = ไม่รวมโหนดข้อความ (ตอนเริ่มแก้: เบราว์เซอร์ยังอ้างโหนดเดิมอยู่) */
+  function plain(el, keep) {
+    if (!el) return;
+    if (el._tj || el.querySelector('.tj-l')) {
+      var frag = D.createDocumentFragment();
+      [].slice.call(el.childNodes).forEach(function (c) {
+        if (c.nodeType === 1 && c.classList.contains('tj-l')) { while (c.firstChild) frag.appendChild(c.firstChild); el.removeChild(c); }
+        else frag.appendChild(c);
+      });
+      el.appendChild(frag);
+      [].slice.call(el.querySelectorAll('.tj-z')).forEach(unwrap);
+      merge(el);
+      if (!keep) el.normalize();
+    }
+    el.classList.remove('tj-on'); el._tj = null;
+    if (el.getAttribute('class') === '') el.removeAttribute('class');
+    strip(el);
+  }
+  function merge(node) { // ชิ้นที่ถูกแบ่งตอนตัดบรรทัด (ป้าย data-tjk เดียวกัน อยู่ติดกัน) รวมกลับเป็นชิ้นเดียว
+    for (var c = node.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType !== 1) continue;
+      var key = c.getAttribute('data-tjk');
+      while (key && c.nextSibling && c.nextSibling.nodeType === 1 && c.nextSibling.getAttribute('data-tjk') === key) {
+        var nx = c.nextSibling; while (nx.firstChild) c.appendChild(nx.firstChild); node.removeChild(nx);
+      }
+      merge(c);
+    }
+  }
+  function strip(el) { [].forEach.call(el.querySelectorAll('[data-tjk]'), function (x) { x.removeAttribute('data-tjk'); }); }
+
+  /* ---------- แตะแก้ข้อความบนหน้าตัวอย่าง ----------
+     คลิก/เลือกข้อความ: หน้ายังจัดกระจายอยู่ (ดับเบิลคลิกเลือกคำได้ตรง) · เริ่มพิมพ์/วาง/ตัด/ลาก: ทั้งหน้ากลับเป็นข้อความปกติ (.tj-editing)
+     โดยคงเคอร์เซอร์/ช่วงที่เลือกไว้ที่ตัวอักษรเดิม · ออกจากหน้า (โฟกัสไปที่อื่นในหน้าเว็บ) / ก่อนพิมพ์ / สร้าง Word → จัดใหม่ */
+  function hostOf(n) { var e = n && (n.nodeType === 1 ? n : n.parentNode); return e && e.closest ? e.closest('.pg[contenteditable]') || e.closest('[contenteditable="true"]') : null; }
+  function blockOf(n, host) { var e = n.nodeType === 1 ? n : n.parentNode; e = e && e.closest('.tj-on'); return e && host.contains(e) ? e : null; }
+  function offIn(el, node, off) { var r = D.createRange(); r.setStart(el, 0); r.setEnd(node, off); return r.toString().length; }
+  function pointAt(el, n, fwd) { // จุดในข้อความที่ตำแหน่ง n ของ el (fwd = อยู่ต้นชิ้นถัดไปเมื่อตรงรอยต่อ)
+    var tw = D.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), t, last = null;
+    while ((t = tw.nextNode())) {
+      var L = t.nodeValue.length;
+      if (n < L || (n === L && !fwd)) return [t, n];
+      n -= L; last = t;
+    }
+    return last ? [last, last.nodeValue.length] : [el, el.childNodes.length];
+  }
+  function fwdOf(node, off) { return node.nodeType === 3 ? off === 0 && node.nodeValue.length > 0 : off < node.childNodes.length; }
+  function mark(node, off, host) { // จำตำแหน่งเป็น (ย่อหน้า, ลำดับตัวอักษร) — โหนดข้อความจะย้ายตอนเลิกจัด
+    var b = blockOf(node, host);
+    return b ? { b: b, t: offIn(b, node, off), f: fwdOf(node, off) } : { n: node, o: off };
+  }
+  function place(x) { return x.b ? pointAt(x.b, x.t, x.f) : [x.n, x.o]; }
+  function blockAt(n) { // ย่อหน้าที่จัดได้ (ชั้นนอกสุด) ที่มีจุดนี้อยู่ — ตัวย่อหน้าคงอยู่ทั้งตอนจัดและเลิกจัด
+    var e = n && (n.nodeType === 1 ? n : n.parentNode), b = null;
+    for (; e && e.nodeType === 1; e = e.parentNode) if (e.matches(SEL)) b = e;
+    return b;
+  }
+  /** จำเคอร์เซอร์/ช่วงที่เลือกก่อนจัดหรือเลิกจัด (กด Ctrl+P / ดาวน์โหลด Word ขณะคลิกค้างในหน้าประกาศ) แล้ววางกลับที่ตัวอักษรเดิม
+      เฉพาะเมื่อเคอร์เซอร์อยู่ในส่วนที่กำลังโฟกัส (ไม่ดึงโฟกัสกลับจากปุ่ม/ช่องอื่น) */
+  function saveSel() {
+    try {
+      var s = W.getSelection(), ae = D.activeElement;
+      if (!s || !s.rangeCount || !s.anchorNode || !s.focusNode || !ae || ae === D.body || !ae.contains(s.anchorNode)) return null;
+      var ab = blockAt(s.anchorNode), fb = blockAt(s.focusNode);
+      if (!ab && !fb) return null;
+      var at = function (b, n, o) { return b ? { b: b, t: offIn(b, n, o), f: fwdOf(n, o) } : { n: n, o: o }; };
+      return [at(ab, s.anchorNode, s.anchorOffset), at(fb, s.focusNode, s.focusOffset)];
+    } catch (e) { return null; }
+  }
+  function restoreSel(x) {
+    if (!x || !(x[0].b || x[0].n).isConnected || !(x[1].b || x[1].n).isConnected) return;
+    try { var A = place(x[0]), F = place(x[1]); W.getSelection().setBaseAndExtent(A[0], A[1], F[0], F[1]); } catch (e) {}
+  }
+  /** สลับหน้าประกาศเป็นสำเนา ก่อนจัดใหม่หลังแก้: ประวัติย้อนกลับ (Ctrl+Z) ของเบราว์เซอร์อ้างโหนดเดิมที่ถูกจัดใหม่ไปแล้ว
+      ถ้าปล่อยไว้ Ctrl+Z หลังจัดใหม่จะเอาข้อความเก่ากลับมาซ้ำ/แทรกผิดที่ → ใช้สำเนา ประวัติเดิมจึงไม่มีผลกับหน้าอีก
+      (ทุกระบบหาหน้าประกาศด้วย querySelector ทุกครั้ง ไม่ได้เก็บตัวแปรอ้างไว้) */
+  function renew(host) {
+    if (!host || !host.parentNode) return host;
+    var nh = host.cloneNode(true);
+    host.parentNode.replaceChild(nh, host);
+    return nh;
+  }
+  function startEdit(host) {
+    if (!host || host.classList.contains('tj-editing') || !host.querySelector('.tj-on')) return;
+    var s = W.getSelection(), a = null, f = null;
+    if (s && s.rangeCount && host.contains(s.anchorNode) && host.contains(s.focusNode)) { a = mark(s.anchorNode, s.anchorOffset, host); f = mark(s.focusNode, s.focusOffset, host); }
+    [].forEach.call(host.querySelectorAll('.tj-on'), function (el) { plain(el, true); });
+    host.classList.add('tj-editing');
+    if (a && f) { var A = place(a), F = place(f); try { s.setBaseAndExtent(A[0], A[1], F[0], F[1]); } catch (e) {} }
+  }
+  function endEdit(host) {
+    if (!host || !host.classList.contains('tj-editing')) return;
+    host.classList.remove('tj-editing');
+    run(renew(host));
+  }
+  /** beforeinput ที่ไม่มี keydown นำหน้า (แป้นพิมพ์บนจอบางแบบ เมนูแก้ไข): เลิกจัดแล้วเบราว์เซอร์จะวางเคอร์เซอร์เพี้ยน
+      จึงยกเลิกคำสั่งเดิม เลิกจัด แล้วสั่งซ้ำด้วย execCommand ที่ตำแหน่งเดิม */
+  var CMD = { insertText: 'insertText', insertReplacementText: 'insertText', insertParagraph: 'insertParagraph', insertLineBreak: 'insertLineBreak',
+    deleteContentBackward: 'delete', deleteContentForward: 'forwardDelete', deleteWordBackward: 'delete', deleteWordForward: 'forwardDelete',
+    formatBold: 'bold', formatItalic: 'italic', formatUnderline: 'underline' };
+  function onBefore(ev) {
+    var host = hostOf(ev.target);
+    if (!host || host.classList.contains('tj-editing') || !host.querySelector('.tj-on')) return;
+    var cmd = CMD[ev.inputType];
+    if (!cmd || !ev.cancelable || !D.execCommand) { startEdit(host); return; }
+    ev.preventDefault();
+    var data = ev.data != null ? ev.data : ev.dataTransfer ? ev.dataTransfer.getData('text/plain') : '';
+    startEdit(host);
+    var sel = W.getSelection();
+    if (/Word/.test(ev.inputType) && sel.isCollapsed && sel.modify) sel.modify('extend', /Backward/.test(ev.inputType) ? 'backward' : 'forward', 'word');
+    try { D.execCommand(cmd, false, cmd === 'insertText' ? data : null); } catch (e) {}
+  }
+  function edits(ev) { // ปุ่มที่แก้ข้อความ (ปุ่มลูกศร/เลือก/คัดลอก ไม่นับ)
+    var k = ev.key || '';
+    if (ev.isComposing || ev.keyCode === 229 || k === 'Unidentified' || k === 'Process') return true;
+    if (ev.ctrlKey || ev.metaKey) return /^(v|x|z|y|b|i|u|d|h|Backspace|Delete)$/i.test(k);
+    return k.length === 1 || /^(Enter|Backspace|Delete|Tab)$/.test(k);
+  }
+
+  /** คัดลอกจากหน้าที่จัดแล้ว: ได้ข้อความต่อเนื่องเหมือนก่อนจัด (ไม่มีขึ้นบรรทัดใหม่ทุกบรรทัดบนจอ ไม่มีช่องไฟ/nowrap ติดไป)
+      ใช้เมื่อช่วงที่เลือกแตะบรรทัดที่จัดแล้ว (รวมเลือกบางส่วนในบรรทัดเดียว) · ตารางในช่วงเดียวกัน (Ctrl+A ทั้งเอกสาร) คั่นช่องด้วย Tab */
+  function onCopy(ev) {
+    var s = W.getSelection(); if (!s || !s.rangeCount || s.isCollapsed || !ev.clipboardData) return;
+    var rg = s.getRangeAt(0), ca = rg.commonAncestorContainer; if (ca && ca.nodeType !== 1) ca = ca.parentNode;
+    var box = D.createElement('div'); box.appendChild(rg.cloneContents());
+    if (!box.querySelector('.tj-l, .tj-z') && !(ca && ca.closest && ca.closest('.tj-on'))) return;
+    [].slice.call(box.querySelectorAll('.tj-l, .tj-z')).forEach(unwrap);
+    merge(box); box.normalize(); strip(box);
+    [].forEach.call(box.querySelectorAll('.tj-on'), function (x) { x.classList.remove('tj-on'); if (!x.getAttribute('class')) x.removeAttribute('class'); });
+    var out = [], cur = '', ws = function (t) { return t.replace(/[ \t\n\r\f]+/g, ' '); };
+    var brk = function () { if (cur.trim()) out.push(cur); cur = ''; };
+    (function walk(n) {
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) cur += ws(c.nodeValue);
+        else if (c.nodeType === 1) {
+          var tg = c.tagName;
+          if (tg === 'BR') { out.push(cur); cur = ''; continue; }
+          if (tg === 'STYLE' || tg === 'SCRIPT') continue;
+          if (tg === 'TR') { brk(); out.push([].map.call(c.children, function (td) { return ws(td.textContent).trim(); }).join('\t')); continue; }
+          var blk = /^(P|DIV|LI|OL|UL|SECTION|H[1-6]|TABLE|THEAD|TBODY|TFOOT)$/.test(tg);
+          if (blk) brk();
+          walk(c);
+          if (blk) brk();
+        }
+      }
+    })(box);
+    brk();
+    ev.clipboardData.setData('text/plain', out.map(function (t) { return t.indexOf('\t') >= 0 ? t : t.trim(); }).join('\n')); // แถวตาราง: คงช่องว่างหัว/ท้ายแถว
+    ev.clipboardData.setData('text/html', box.innerHTML);
+    ev.preventDefault();
+  }
+
+  function safe(el) { try { return justify(el); } catch (e) { if (W.console) console.warn('DDNJUST', e); try { plain(el); } catch (e2) {} return false; } }
+  /** จัดทุกย่อหน้าในพื้นที่ root · ย่อหน้าที่ยังไม่แสดงบนจอ (หน้าตัวอย่างยังซ่อน) จะจัดเองทันทีที่แสดง */
+  function run(root, sel) {
+    if (!OK || !root || !lsOK()) return 0;
+    var n = 0, wait = [];
+    [].slice.call(root.querySelectorAll(sel || SEL)).forEach(function (el) {
+      if (el.closest('.tj-editing') || el.parentNode && el.parentNode.closest && el.parentNode.closest(sel || SEL)) return; // กำลังแก้ / ย่อหน้าซ้อนในย่อหน้า
+      if (el.getBoundingClientRect().width > 0) { if (safe(el)) n++; } else wait.push(el);
+    });
+    if (wait.length && W.ResizeObserver) {
+      var left = wait.length, ro = new ResizeObserver(function (es) {
+        es.forEach(function (e) { if (e.contentRect.width > 0 || !e.target.isConnected) { ro.unobserve(e.target); left--; if (e.target.isConnected) safe(e.target); } });
+        if (left <= 0) ro.disconnect();
+      });
+      wait.forEach(function (el) { ro.observe(el); });
+      setTimeout(function () { ro.disconnect(); }, 600000); // หน้าตัวอย่างที่ปิดไปโดยไม่เคยแสดง
+    }
+    return n;
+  }
+  /** จัดทุกหน้าที่ค้างอยู่ในโหมดแก้ไข และย่อหน้าที่ยังไม่ได้จัด (ก่อนพิมพ์) · คืนรายการ [หน้าเดิม, สำเนาที่จัดแล้ว] ของหน้าที่ค้างแก้ */
+  function settle(root) {
+    var map = [];
+    if (!OK) return map;
+    var r = root || D, hs = [].slice.call(r.querySelectorAll('.tj-editing'));
+    if (r.classList && r.classList.contains('tj-editing')) hs.unshift(r);
+    hs.forEach(function (h) { h.classList.remove('tj-editing'); var n = renew(h); map.push([h, n]); if (h === r) r = n; });
+    var sv = saveSel();
+    run(r.nodeType === 9 ? r.body || r.documentElement : r);
+    restoreSel(sv);
+    return map;
+  }
+  /** เลิกจัดชั่วคราว (เช่น ตอนอ่านหน้าไปสร้างไฟล์ Word) คืนฟังก์ชันสำหรับจัดกลับ (เคอร์เซอร์กลับที่เดิม) */
+  function suspend(root) {
+    var list = [].slice.call((root || D).querySelectorAll('.tj-on')), sv = saveSel();
+    list.forEach(function (el) { plain(el); });
+    return function () { list.forEach(function (el) { if (el.isConnected) safe(el); }); restoreSel(sv); };
+  }
+  if (OK && !W.__ddnJustBound) {
+    W.__ddnJustBound = 1;
+    var go = function (ev) { try { startEdit(hostOf(ev.target)); } catch (e) {} };
+    D.addEventListener('keydown', function (ev) { if (edits(ev)) go(ev); }, true);
+    D.addEventListener('beforeinput', function (ev) { try { onBefore(ev); } catch (e) {} }, true);
+    // ลากวาง: เข้าโหมดแก้ตั้งแต่เริ่มลาก/ลากเข้าหน้า (ถ้ารอถึงตอนวาง ตำแหน่งวางของเบราว์เซอร์หายไปกับการเลิกจัด ข้อความไม่ย้าย)
+    ['paste', 'cut', 'dragstart', 'dragenter', 'drop', 'compositionstart'].forEach(function (t) { D.addEventListener(t, go, true); });
+    D.addEventListener('click', function (ev) { // คลิก 3 ครั้ง = เลือกทั้งย่อหน้า (บรรทัดที่จัดแล้วเป็นบล็อก เบราว์เซอร์จะเลือกแค่บรรทัดเดียว)
+      try {
+        if (ev.detail !== 3) return;
+        var p = ev.target && ev.target.closest ? ev.target.closest('.tj-on') : null;
+        if (!p || !hostOf(p) || p.closest('.tj-editing')) return;
+        var r = D.createRange(); r.selectNodeContents(p); var s = W.getSelection(); s.removeAllRanges(); s.addRange(r);
+      } catch (e) {}
+    }, true);
+    D.addEventListener('focusout', function (ev) {
+      var h = ev.target;
+      if (!h || !h.classList || !h.classList.contains('tj-editing')) return;
+      setTimeout(function () { if (h.isConnected && D.hasFocus() && !h.contains(D.activeElement)) { try { endEdit(h); } catch (e) {} } }, 0);
+    }, true);
+    D.addEventListener('copy', function (ev) { try { onCopy(ev); } catch (e) {} }, true);
+    W.addEventListener('beforeprint', function () { // ก่อนพิมพ์: จัดทุกหน้า · หลังพิมพ์ กลับไปแก้ต่อที่ตำแหน่งเดิม (กด Ctrl+P ระหว่างแก้)
+      try {
+        var s = W.getSelection(), ae = D.activeElement; PRINT = [];
+        [].forEach.call(D.querySelectorAll('.tj-editing'), function (h) {
+          var c = s && s.rangeCount && h.contains(s.anchorNode) && h.contains(s.focusNode) ? [offIn(h, s.anchorNode, s.anchorOffset), fwdOf(s.anchorNode, s.anchorOffset), offIn(h, s.focusNode, s.focusOffset), fwdOf(s.focusNode, s.focusOffset)] : null;
+          PRINT.push({ h: h, c: c, f: !!ae && (ae === h || h.contains(ae)) });
+        });
+        settle().forEach(function (m) { // หน้าที่ค้างแก้ถูกสลับเป็นสำเนา (ดู renew) → โฟกัสสำเนาแทน
+          PRINT.forEach(function (x) { if (x.h === m[0]) { x.h = m[1]; if (x.f) { try { m[1].focus({ preventScroll: true }); } catch (e) {} } } });
+        });
+      } catch (e) {}
+    });
+    W.addEventListener('afterprint', function () {
+      try {
+        (PRINT || []).forEach(function (x) {
+          var h = x.h; if (!x.f || !h.isConnected || !h.contains(D.activeElement) && D.activeElement !== h) return;
+          [].forEach.call(h.querySelectorAll('.tj-on'), function (el) { plain(el); }); h.classList.add('tj-editing');
+          if (x.c) { var A = pointAt(h, x.c[0], x.c[1]), F = pointAt(h, x.c[2], x.c[3]); W.getSelection().setBaseAndExtent(A[0], A[1], F[0], F[1]); }
+        });
+      } catch (e) {}
+      PRINT = null;
+    });
+  }
+  /** สำหรับตรวจสอบ: ข้อความที่ใส่ | ตรงจุดที่ตัดบรรทัดได้ (¦ = ได้แต่ไม่ค่อยดี) */
+  function marks(text) { var m = { S: text, M: [], NW: [] }; for (var i = 0; i < text.length; i++) m.NW.push(0); var ok = breaks(m), o = ''; for (var j = 0; j < text.length; j++) o += (ok[j] === 1 ? '|' : ok[j] === 3 ? '¦' : '') + text.charAt(j); return o; }
+  var api = { run: run, justify: justify, plain: plain, settle: settle, suspend: suspend, startEdit: startEdit, endEdit: endEdit, marks: OK ? marks : null, sel: SEL };
+  Object.defineProperty(api, 'ok', { enumerable: true, get: function () { return OK && lsOK(); } }); // ใช้จัดได้จริงในเบราว์เซอร์นี้
+  if (W) W.DDNJUST = api;
+  return api;
+})();
+/*JUST-END*/
 /*DOCX-BEGIN*/
-/* หน้าประกาศแรกเป็นไฟล์ Word (.docx) — ใช้ร่วมกันทุกระบบ (ต้นฉบับ: ระบบรับนักเรียน/_สำหรับพัฒนา/ไฟล์Word_ร่วม/ddn_docx.js · ติดตั้งด้วย ติดตั้ง_docx.py ในโฟลเดอร์เดียวกัน)
+/* หน้าประกาศแรกเป็นไฟล์ Word (.docx) — ใช้ร่วมกันทุกระบบ (ต้นฉบับ: ระบบรับนักเรียน/_สำหรับพัฒนา/หน้าประกาศ_ร่วม/ddn_docx.js · ติดตั้งด้วย ติดตั้ง_หน้าประกาศ.py ในโฟลเดอร์เดียวกัน)
    อ่านจากหน้าตัวอย่างที่แสดงอยู่ (รวมข้อความที่แตะแก้บนหน้า) แล้วสร้างไฟล์เองในเบราว์เซอร์ ไม่ใช้ไลบรารีภายนอก ไม่ส่งข้อมูลออกนอกเครื่อง
-   ฟอนต์ TH SarabunPSK · ระยะขอบ ย่อหน้า ระยะบรรทัด ขนาดตัวอักษร ตามหน้าตัวอย่าง · ย่อหน้าเนื้อความจัดแบบกระจายแบบไทย ให้ Word ตัดบรรทัดเอง (แก้ วัน เวลา สถานที่ ต่อใน Word ได้ทันที) */
+   ฟอนต์ TH SarabunPSK · ระยะขอบ ย่อหน้า ระยะบรรทัด ขนาดตัวอักษร ตามหน้าตัวอย่าง · ย่อหน้าเนื้อความจัดแบบกระจายแบบไทย ให้ Word ตัดบรรทัดเอง (แก้ วัน เวลา สถานที่ ต่อใน Word ได้ทันที)
+   หน้าตัวอย่างที่จัดกระจายแบบไทยด้วย ddn_just.js จะถูกคืนเป็นข้อความต่อเนื่องชั่วคราวก่อนอ่าน (ไม่ติดช่องไฟ/การตัดบรรทัดของหน้าเว็บมาใน Word) */
 var DDNDOCX = (function () {
   'use strict';
   var FONT = 'TH SarabunPSK', TW = 15, EMU = 9525; // 1px (CSS) = 15 twips = 9525 EMU
@@ -1883,7 +2424,7 @@ var DDNDOCX = (function () {
     var top = (r.top - ctx.R.top) * K, before = Math.max(0, top - ctx.y), ti = isEl ? px(cs.textIndent) : 0;
     ctx.y = Math.max(ctx.y, (r.bottom - ctx.R.top) * K);
     var ta = cs.textAlign, jc = /center/.test(ta) ? 'center' : /right|end/.test(ta) ? 'right' : (ta === 'justify' || tag === 'P' || tag === 'LI' || ti) ? 'thaiDistribute' : 'left';
-    var fs = px(cs.fontSize), lh = px(cs.lineHeight), line = lh && fs ? Math.round(240 * lh / (fs * 1.1)) : 240;
+    var fs = px(cs.fontSize), lh = px(cs.lineHeight), line = lh && fs ? Math.round(240 * lh / (fs * 1.116)) : 240; // TH SarabunPSK บรรทัดเดียวใน Word = 1.116 เท่าของขนาดตัวอักษร
     line = Math.max(200, Math.min(480, line));
     if (Math.abs(left) < 2) left = 0; if (Math.abs(right) < 2) right = 0;
     return collect(nodes).map(function (runs, i) {
@@ -1934,7 +2475,9 @@ var DDNDOCX = (function () {
   function fname(s) { return (String(s || 'ประกาศ').replace(/[\\\/:*?"<>|\u0000-\u001F]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'ประกาศ') + '.docx'; }
   /** สร้างและดาวน์โหลดไฟล์ Word ของหน้าประกาศ sec (คืนจำนวนไบต์) */
   function download(sec, name) {
-    var model = fromPage(sec), bytes = build(model), fn = fname(name || model.title);
+    var undo = typeof DDNJUST !== 'undefined' && DDNJUST.suspend ? DDNJUST.suspend(sec) : null, model;
+    try { model = fromPage(sec); } finally { if (undo) undo(); }
+    var bytes = build(model), fn = fname(name || model.title);
     var blob = new Blob([bytes], { type: MIME });
     if (window.navigator && navigator.msSaveOrOpenBlob) { navigator.msSaveOrOpenBlob(blob, fn); return bytes.length; }
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; a.rel = 'noopener'; document.body.appendChild(a); a.click();
